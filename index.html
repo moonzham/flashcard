@@ -9,89 +9,84 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
     --bg: #0d0d10; --surface: #16161f; --border: #2a2a3d;
-    --accent: #7c6aff; --accent2: #ff6b6b; --green: #4ade80;
-    --yellow: #fbbf24; --text: #f0f0f8; --muted: #6b6b88; --radius: 16px;
+    --accent: #7c6aff; --accent2: #ff6b6b; --text: #f0f0f8; --muted: #6b6b88; --radius: 16px;
+    --card-bg: #ffffff; --card-border: #e0e0e0; --card-text: #111111; --card-muted: #999999;
+  }
+  [data-theme="light"] {
+    --bg: #f4f4f8; --surface: #ffffff; --border: #e0e0ec;
+    --accent: #6355e0; --accent2: #e53e3e; --text: #111111; --muted: #888899;
+    --card-bg: #ffffff; --card-border: #d0d0e0; --card-text: #111111; --card-muted: #888888;
   }
   body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; }
-  .screen { display: none; padding: 20px 18px 90px; max-width: 480px; margin: 0 auto; }
+  .screen { display: none; padding: 20px 18px 100px; max-width: 480px; margin: 0 auto; }
   .screen.active { display: block; }
 
-  /* ── 로그인 화면 ── */
-  #screen-login {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 40px 24px; max-width: 480px; margin: 0 auto;
-  }
+  #screen-login { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; max-width: 480px; margin: 0 auto; }
   .login-logo { font-size: 56px; margin-bottom: 16px; }
-  .login-title { font-size: 28px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+  .login-title { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
   .login-sub { font-size: 14px; color: var(--muted); margin-bottom: 48px; text-align: center; line-height: 1.6; }
-  .google-btn {
-    display: flex; align-items: center; gap: 12px;
-    background: #fff; color: #3c4043; border: none; border-radius: 12px;
-    padding: 14px 28px; font-size: 15px; font-weight: 700; cursor: pointer;
-    font-family: inherit; box-shadow: 0 2px 12px rgba(0,0,0,.3); transition: transform .15s;
-  }
+  .google-btn { display: flex; align-items: center; gap: 12px; background: #fff; color: #3c4043; border: none; border-radius: 12px; padding: 14px 28px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 2px 12px rgba(0,0,0,.2); transition: transform .15s; }
   .google-btn:hover { transform: scale(1.03); }
   .google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
   .login-note { font-size: 11px; color: var(--muted); margin-top: 20px; text-align: center; line-height: 1.6; }
 
-  /* ── 공통 네비 ── */
   .nav { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
   .back-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 18px; cursor: pointer; padding: 8px 12px; line-height: 1; }
-  .nav-title { font-size: 17px; font-weight: 700; color: var(--text); }
+  .nav-title { font-size: 17px; font-weight: 700; }
   .nav-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .home-label { font-size: 11px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; }
-  .home-title { font-size: 26px; font-weight: 900; color: var(--text); margin-bottom: 28px; }
+  .home-title { font-size: 26px; font-weight: 900; margin-bottom: 28px; }
 
-  /* ── 유저 헤더 ── */
   .user-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .user-info { display: flex; align-items: center; gap: 10px; }
   .user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
-  .user-avatar-placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; }
+  .user-avatar-ph { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; }
   .user-name { font-size: 13px; color: var(--muted); }
-  .logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 11px; padding: 5px 10px; cursor: pointer; font-family: inherit; }
+  .header-btns { display: flex; gap: 8px; align-items: center; }
+  .icon-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 13px; padding: 5px 10px; cursor: pointer; font-family: inherit; }
 
-  /* ── 덱 목록 ── */
   .deck-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; cursor: pointer; transition: transform .15s; display: flex; align-items: center; gap: 14px; }
   .deck-card:active { transform: scale(0.97); }
   .deck-emoji { font-size: 30px; flex-shrink: 0; }
   .deck-info { flex: 1; min-width: 0; }
-  .deck-name { font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 3px; }
+  .deck-name { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
   .deck-meta { font-size: 12px; color: var(--muted); }
   .deck-pct { font-size: 18px; font-weight: 900; color: var(--accent); }
   .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; overflow: hidden; }
   .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s; }
   .add-deck-btn { width: 100%; padding: 16px; background: transparent; border: 2px dashed var(--border); border-radius: var(--radius); color: var(--muted); font-size: 14px; cursor: pointer; font-family: inherit; margin-top: 4px; }
+  .resume-badge { font-size: 10px; background: #d9770622; color: #d97706; border: 1px solid #d9770644; border-radius: 6px; padding: 2px 7px; margin-left: 6px; }
 
-  /* ── 학습 화면 ── */
-  .study-progress { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+  .study-progress { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
   .study-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
-  .flashcard { position: relative; min-height: 240px; border-radius: 20px; background: #fff; border: 1px solid #e0e0e0; box-shadow: 0 4px 20px rgba(0,0,0,.15); padding: 44px 24px 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 14px; user-select: none; }
-  .card-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 14px; }
-  .card-text { font-weight: 800; text-align: center; line-height: 1.4; color: #111; word-break: keep-all; overflow-wrap: break-word; width: 100%; }
-  .card-tap { font-size: 12px; color: #bbb; margin-top: 16px; }
-  .card-hint-text { font-size: 12px; color: #999; margin-top: 10px; text-align: center; }
+
+  .flashcard { position: relative; border-radius: 20px; background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: 0 4px 20px rgba(0,0,0,.12); padding: 44px 20px 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 14px; user-select: none; overflow: hidden; }
+  .card-face { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .card-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--card-muted); margin-bottom: 14px; }
+  .card-text { font-weight: 800; text-align: center; line-height: 1.5; color: var(--card-text); word-break: break-all; overflow-wrap: break-word; width: 100%; }
+  .card-tap { font-size: 12px; color: var(--card-muted); margin-top: 20px; text-align: center; width: 100%; }
+  .card-hint-text { font-size: 12px; color: var(--card-muted); margin-top: 10px; text-align: center; }
   .star-btn { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 22px; cursor: pointer; z-index: 10; opacity: 0.3; transition: opacity .2s; }
   .star-btn.starred { opacity: 1; }
-  .nav-btns { display: flex; gap: 10px; margin-bottom: 12px; }
-  .nav-btn { flex: 1; padding: 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 14px; cursor: pointer; font-family: inherit; }
-  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-  .hint-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit; margin-bottom: 12px; }
-  .answer-btns { display: flex; gap: 10px; }
-  .answer-btn { flex: 1; padding: 14px 8px; border: none; border-radius: 12px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
-  .btn-dont { background: #ff6b6b22; color: var(--accent2); border: 1px solid #ff6b6b44; }
-  .btn-maybe { background: #fbbf2422; color: var(--yellow); border: 1px solid #fbbf2444; }
-  .btn-know { background: #4ade8022; color: var(--green); border: 1px solid #4ade8044; }
 
-  /* ── 완료 화면 ── */
+  .hint-btn { width: 100%; background: #d9770618; border: 1px solid #d9770644; border-radius: 10px; padding: 10px 20px; color: #d97706; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 12px; }
+  .answer-btns { display: flex; gap: 10px; margin-bottom: 20px; }
+  .answer-btn { flex: 1; padding: 14px 6px; border: none; border-radius: 12px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; color: #fff; }
+  .btn-dont  { background: #e53e3e; }
+  .btn-maybe { background: #d97706; }
+  .btn-know  { background: #16a34a; }
+  .nav-btns { display: flex; gap: 10px; }
+  .nav-btn { flex: 1; padding: 13px; background: #7c6aff; border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
   .done-screen { text-align: center; padding: 40px 24px; }
   .result-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 32px; }
-  .result-box { background: var(--surface); border-radius: 12px; padding: 16px 14px; text-align: center; }
+  .result-box { background: var(--surface); border-radius: 12px; padding: 16px 14px; text-align: center; min-width: 80px; }
   .result-num { font-size: 24px; font-weight: 900; }
   .result-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-  /* ── 덱 추가/편집 ── */
   .form-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 8px; }
-  .form-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 15px; font-family: inherit; margin-bottom: 14px; outline: none; box-sizing: border-box; display: block; }
+  .form-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 15px; font-family: inherit; margin-bottom: 14px; outline: none; display: block; }
   .emoji-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
   .emoji-btn { font-size: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
   .emoji-btn.selected { border-color: var(--accent); background: #7c6aff22; }
@@ -105,11 +100,8 @@
   .primary-btn { width: 100%; padding: 15px; background: var(--accent); border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
   .danger-btn { background: none; border: 1px solid var(--accent2); border-radius: 12px; color: var(--accent2); padding: 12px; width: 100%; font-family: inherit; cursor: pointer; font-size: 14px; margin-top: 10px; }
   .section-title { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
-
-  /* ── 별표 ── */
   .starred-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
 
-  /* ── 통계 ── */
   .stats-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
   .stats-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
   .stats-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
@@ -120,61 +112,59 @@
   .session-date { font-size: 12px; color: var(--muted); }
   .session-scores { display: flex; gap: 10px; font-size: 12px; }
 
-  /* ── 탭바 ── */
+  .setting-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; }
+  .setting-label { font-size: 14px; }
+  .setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .theme-btns { display: flex; gap: 6px; }
+  .theme-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 11px; padding: 5px 8px; cursor: pointer; font-family: inherit; }
+  .theme-btn.active { border-color: var(--accent); color: var(--accent); background: #7c6aff18; }
+
   .tab-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 8px 0 20px; z-index: 100; }
   .tab-btn { flex: 1; background: none; border: none; color: var(--muted); font-size: 11px; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; }
   .tab-btn.active { color: var(--accent); }
   .tab-icon { font-size: 20px; }
 
-  /* ── 로딩/토스트 ── */
   .loading-overlay { position: fixed; inset: 0; background: rgba(13,13,16,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
   .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
   .loading-text { font-size: 13px; color: var(--muted); }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; font-size: 13px; color: var(--text); z-index: 998; white-space: nowrap; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; font-size: 13px; z-index: 998; white-space: nowrap; opacity: 0; transition: opacity .3s; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  /* ── 설정 화면 ── */
-  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
-  .setting-label { font-size: 14px; }
-  .setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .sync-status { font-size: 12px; color: var(--green); }
-  .sync-status.error { color: var(--accent2); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 997; padding: 24px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 360px; }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; white-space: pre-line; }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btn { flex: 1; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; }
+  .modal-btn-secondary { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .modal-btn-primary { background: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     로그인 화면
-════════════════════════════════════════ -->
 <div id="screen-login">
   <div class="login-logo">📚</div>
   <div class="login-title">암기카드</div>
   <div class="login-sub">Google 계정으로 로그인하면<br>어디서든 내 카드를 사용할 수 있어요</div>
   <button class="google-btn" onclick="signIn()">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-    </svg>
+    <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
     Google로 로그인
   </button>
-  <div class="login-note">데이터는 본인의 Google Drive에 저장됩니다<br>앱 전용 폴더에만 접근하며 다른 파일은 건드리지 않아요</div>
+  <div class="login-note">데이터는 본인의 Google Drive에 저장됩니다<br>앱 전용 폴더에만 접근해요</div>
 </div>
 
-<!-- ══════════════════════════════════════
-     홈 화면
-════════════════════════════════════════ -->
 <div id="screen-home" class="screen">
   <div class="user-header">
     <div class="user-info">
       <div id="user-avatar-wrap"></div>
       <div class="user-name" id="user-name-text"></div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span id="sync-indicator" class="sync-status" style="display:none">✓ 동기화됨</span>
-      <button class="logout-btn" onclick="signOut()">로그아웃</button>
+    <div class="header-btns">
+      <span id="sync-indicator" style="display:none;font-size:12px;color:#16a34a">✓ 동기화됨</span>
+      <button class="icon-btn" onclick="showSettings()">⚙️</button>
+      <button class="icon-btn" onclick="signOut()">로그아웃</button>
     </div>
   </div>
   <div class="home-label">암기 카드</div>
@@ -183,30 +173,42 @@
   <button class="add-deck-btn" onclick="showAddDeck()">+ 새 덱 만들기</button>
 </div>
 
-<!-- ══════════════════════════════════════
-     별표 화면
-════════════════════════════════════════ -->
 <div id="screen-starred" class="screen">
   <div class="home-label">⭐ 별표 카드</div>
   <div class="home-title">다시 볼 카드</div>
   <div id="starred-list"></div>
 </div>
 
-<!-- ══════════════════════════════════════
-     통계 화면
-════════════════════════════════════════ -->
 <div id="screen-stats" class="screen">
   <div class="home-label">📊 학습 통계</div>
   <div class="home-title">내 기록</div>
   <div id="stats-list"></div>
 </div>
 
-<!-- ══════════════════════════════════════
-     학습 화면
-════════════════════════════════════════ -->
-<div id="screen-study" class="screen">
+<div id="screen-settings" class="screen">
   <div class="nav">
     <button class="back-btn" onclick="showHome()">←</button>
+    <div><div class="nav-title">설정</div></div>
+  </div>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">테마</div>
+        <div class="setting-sub">화면 색상 모드</div>
+      </div>
+      <div class="theme-btns">
+        <button class="theme-btn" id="theme-btn-light"  onclick="setTheme('light')">☀️ 라이트</button>
+        <button class="theme-btn" id="theme-btn-dark"   onclick="setTheme('dark')">🌙 다크</button>
+        <button class="theme-btn" id="theme-btn-system" onclick="setTheme('system')">📱 시스템</button>
+      </div>
+    </div>
+  </div>
+  <button class="danger-btn" onclick="signOut()">로그아웃</button>
+</div>
+
+<div id="screen-study" class="screen">
+  <div class="nav">
+    <button class="back-btn" onclick="exitStudy()">←</button>
     <div>
       <div class="nav-title" id="study-deck-name"></div>
       <div class="nav-sub" id="study-progress-text"></div>
@@ -215,47 +217,41 @@
   <div class="study-progress"><div class="study-progress-fill" id="study-progress-fill"></div></div>
   <div class="flashcard" id="flashcard" onclick="flipCard()">
     <button class="star-btn" id="star-btn" onclick="toggleStar(event)">⭐</button>
-    <div id="card-front-face">
+    <div class="card-face" id="card-front-face">
       <div class="card-label">문제</div>
       <div class="card-text" id="card-front-text"></div>
       <div class="card-tap">탭해서 정답 보기</div>
     </div>
-    <div id="card-back-face" style="display:none">
+    <div class="card-face" id="card-back-face" style="display:none">
       <div class="card-label">정답</div>
       <div class="card-text" id="card-back-text"></div>
       <div class="card-hint-text" id="card-hint-back"></div>
     </div>
   </div>
-  <button class="hint-btn" id="hint-btn" onclick="toggleHint()" style="display:none"></button>
+  <button class="hint-btn" id="hint-btn" onclick="toggleHint()" style="display:none">💡 힌트 보기</button>
+  <div class="answer-btns" id="answer-btns" style="display:none">
+    <button class="answer-btn btn-dont"  onclick="answer('dont')">😅 몰랐어요</button>
+    <button class="answer-btn btn-maybe" onclick="answer('maybe')">💭 애매해요</button>
+    <button class="answer-btn btn-know"  onclick="answer('know')">✅ 알았어요</button>
+  </div>
   <div class="nav-btns">
     <button class="nav-btn" id="btn-prev" onclick="prevCard()">← 이전</button>
-    <button class="nav-btn" id="btn-next" onclick="다음Card()">다음 →</button>
-  </div>
-  <div class="answer-btns" id="answer-btns" style="display:none">
-    <button class="answer-btn btn-dont" onclick="answer('dont')">😅 몰랐어요</button>
-    <button class="answer-btn btn-maybe" onclick="answer('maybe')">💭 애매해요</button>
-    <button class="answer-btn btn-know" onclick="answer('know')">✅ 알았어요</button>
+    <button class="nav-btn" id="btn-next" onclick="nextCard()">다음 →</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     완료 화면
-════════════════════════════════════════ -->
 <div id="screen-done" class="screen done-screen">
   <div style="font-size:64px;margin-bottom:16px">🎉</div>
-  <div style="font-size:24px;font-weight:900;color:var(--text);margin-bottom:8px">학습 완료!</div>
+  <div style="font-size:24px;font-weight:900;margin-bottom:8px">학습 완료!</div>
   <div style="color:var(--muted);font-size:14px;margin-bottom:32px" id="done-sub"></div>
   <div class="result-row">
-    <div class="result-box"><div class="result-num" style="color:var(--green)" id="res-know">0</div><div class="result-label">✅ 알았어요</div></div>
-    <div class="result-box"><div class="result-num" style="color:var(--yellow)" id="res-maybe">0</div><div class="result-label">💭 애매해요</div></div>
-    <div class="result-box"><div class="result-num" style="color:var(--accent2)" id="res-dont">0</div><div class="result-label">😅 몰랐어요</div></div>
+    <div class="result-box"><div class="result-num" style="color:#16a34a" id="res-know">0</div><div class="result-label">✅ 알았어요</div></div>
+    <div class="result-box"><div class="result-num" style="color:#d97706" id="res-maybe">0</div><div class="result-label">💭 애매해요</div></div>
+    <div class="result-box"><div class="result-num" style="color:#e53e3e" id="res-dont">0</div><div class="result-label">😅 몰랐어요</div></div>
   </div>
   <button class="primary-btn" onclick="showHome()">← 덱 목록으로</button>
 </div>
 
-<!-- ══════════════════════════════════════
-     덱 추가/편집 화면
-════════════════════════════════════════ -->
 <div id="screen-adddeck" class="screen">
   <div class="nav">
     <button class="back-btn" onclick="showHome()">←</button>
@@ -267,7 +263,7 @@
   <div class="emoji-row" id="emoji-row"></div>
   <label class="form-label">CSV / TXT 업로드</label>
   <div class="csv-upload-area" onclick="document.getElementById('csv-input').click()">
-    <input type="file" id="csv-input" accept=".csv,.txt,text/csv,text/plain" onchange="handleCSV(event)">
+    <input type="file" id="csv-input" accept=".csv,.txt" onchange="handleCSV(event)">
     <div style="font-size:28px;margin-bottom:8px">📄</div>
     <div style="color:var(--muted);font-size:13px" id="csv-text">파일 선택 (CSV 또는 TXT)</div>
     <div style="color:var(--muted);font-size:11px;margin-top:4px">형식: 앞면, 뒷면, 힌트(선택)</div>
@@ -279,672 +275,463 @@
   <button class="danger-btn" id="delete-deck-btn" style="display:none" onclick="deleteDeck()">🗑 이 덱 삭제</button>
 </div>
 
-<!-- 탭바 -->
 <div class="tab-bar" id="tab-bar" style="display:none">
-  <button class="tab-btn active" id="tab-home" onclick="showHome()"><span class="tab-icon">📚</span>덱 목록</button>
+  <button class="tab-btn" id="tab-home"    onclick="showHome()">   <span class="tab-icon">📚</span>덱 목록</button>
   <button class="tab-btn" id="tab-starred" onclick="showStarred()"><span class="tab-icon">⭐</span>별표</button>
-  <button class="tab-btn" id="tab-stats" onclick="showStats()"><span class="tab-icon">📊</span>통계</button>
+  <button class="tab-btn" id="tab-stats"   onclick="showStats()">  <span class="tab-icon">📊</span>통계</button>
 </div>
 
-<!-- 로딩 오버레이 -->
 <div class="loading-overlay" id="loading-overlay" style="display:none">
   <div class="loading-spinner"></div>
   <div class="loading-text" id="loading-text">불러오는 중...</div>
 </div>
-
-<!-- 토스트 -->
 <div class="toast" id="toast"></div>
 
+<div class="modal-overlay" id="resume-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">이어서 공부할까요?</div>
+    <div class="modal-sub" id="resume-modal-sub"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-secondary" onclick="startFresh()">처음부터</button>
+      <button class="modal-btn modal-btn-primary"   onclick="resumeStudy()">이어서 →</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ════════════════════════════════════════════════════════════
-//  ★★★ 여기에 Google Cloud Console에서 발급받은 클라이언트 ID를 넣으세요 ★★★
-// ════════════════════════════════════════════════════════════
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-
-// 필요한 Google API 스코프
-// - drive.appdata: 앱 전용 폴더만 접근 (다른 파일 못 건드림)
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
-
-const DECKS_FILENAME  = 'flashcard_decks.json';
-const PROGRESS_FILENAME = 'flashcard_progress.json';
+const DECKS_FILE = 'flashcard_decks.json';
+const PROGRESS_FILE = 'flashcard_progress.json';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
 
-// ── 앱 상태 ──
 let state = {
-  // 인증
-  accessToken: null,
-  user: null,
-  // 파일 ID 캐시 (Drive 파일 ID)
-  decksFileId: null,
-  progressFileId: null,
-  // 데이터
-  decks: [],      // flashcard_decks.json
-  progress: {},   // flashcard_progress.json
-  // UI
-  editingDeckId: null,
+  accessToken: null, user: null,
+  decksFileId: null, progressFileId: null,
+  decks: [], progress: {},
+  editingDeckId: null, pendingDeckId: null,
   studyDeck: null, studyQueue: [], studyIdx: 0,
   studyFlipped: false, studyShowHint: false,
-  studyResults: {know:0, maybe:0, dont:0},
+  studyResults: {know:0,maybe:0,dont:0},
   selectedEmoji: '📚', cardInputs: [],
-  currentSessionStart: null,
 };
 
-// ════════════════════════════════════════
-//  Google Identity Services (GIS) 초기화
-// ════════════════════════════════════════
+// ── 테마 ──
+function applyTheme(t) {
+  const pref = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
+  document.documentElement.setAttribute('data-theme', pref);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('theme-btn-' + t);
+  if (el) el.classList.add('active');
+}
+function setTheme(t) { localStorage.setItem('fc_theme', t); applyTheme(t); }
+function loadTheme() { applyTheme(localStorage.getItem('fc_theme') || 'system'); }
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('fc_theme') || 'system') === 'system') applyTheme('system');
+});
+
+// ── GIS 초기화 ──
 let tokenClient;
-
 window.onload = () => {
-  // GIS 스크립트 동적 로드
-  const gisScript = document.createElement('script');
-  gisScript.src = 'https://accounts.google.com/gsi/client';
-  gisScript.onload = initGIS;
-  document.head.appendChild(gisScript);
-
-  // Drive API 스크립트 동적 로드
-  const gapiScript = document.createElement('script');
-  gapiScript.src = 'https://apis.google.com/js/api.js';
-  gapiScript.onload = () => gapi.load('client', initGapiClient);
-  document.head.appendChild(gapiScript);
+  loadTheme();
+  const s1 = document.createElement('script'); s1.src = 'https://accounts.google.com/gsi/client'; s1.onload = initGIS; document.head.appendChild(s1);
+  const s2 = document.createElement('script'); s2.src = 'https://apis.google.com/js/api.js'; s2.onload = () => gapi.load('client', initGapiClient); document.head.appendChild(s2);
 };
-
 function initGIS() {
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: CLIENT_ID, scope: SCOPES,
     callback: async (resp) => {
-      if (resp.error) { showToast('로그인 실패: ' + resp.error); return; }
+      if (resp.error) { showToast('로그인 실패'); hideLoading(); return; }
       state.accessToken = resp.access_token;
+      localStorage.setItem('fc_access_token', resp.access_token);
       gapi.client.setToken({ access_token: resp.access_token });
-      await fetchUserInfo();
-      await loadAllData();
+      await fetchUserInfo(); await loadAllData();
     },
   });
+  tryAutoLogin();
 }
-
 async function initGapiClient() {
   await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
 }
-
-// ════════════════════════════════════════
-//  인증
-// ════════════════════════════════════════
-function signIn() {
-  if (!CLIENT_ID || CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com') {
-    alert('⚠️ CLIENT_ID를 설정해주세요!\n\nHTML 파일 상단의 CLIENT_ID 변수에\nGoogle Cloud Console에서 발급받은\nOAuth 클라이언트 ID를 넣으세요.');
-    return;
-  }
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+async function tryAutoLogin() {
+  const saved = localStorage.getItem('fc_access_token');
+  if (!saved) { showLoginScreen(); return; }
+  showLoading('로그인 확인 중...');
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${saved}` } });
+    if (!r.ok) throw new Error();
+    state.accessToken = saved; state.user = await r.json();
+    gapi.client.setToken({ access_token: saved });
+    await loadAllData();
+  } catch { localStorage.removeItem('fc_access_token'); hideLoading(); showLoginScreen(); }
 }
 
+// ── 인증 ──
+function signIn() { showLoading('Google 로그인 중...'); tokenClient.requestAccessToken({ prompt: '' }); }
 function signOut() {
-  if (state.accessToken) {
-    google.accounts.oauth2.revoke(state.accessToken);
-  }
-  state.accessToken = null;
-  state.user = null;
-  state.decks = [];
-  state.progress = {};
-  state.decksFileId = null;
-  state.progressFileId = null;
+  if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, () => {});
+  localStorage.removeItem('fc_access_token');
+  Object.assign(state, { accessToken:null, user:null, decks:[], progress:{}, decksFileId:null, progressFileId:null });
   document.getElementById('tab-bar').style.display = 'none';
   showLoginScreen();
 }
-
 async function fetchUserInfo() {
-  try {
-    const resp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${state.accessToken}` }
-    });
-    state.user = await resp.json();
-  } catch(e) { console.error(e); }
+  try { const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${state.accessToken}` } }); state.user = await r.json(); } catch(e) {}
 }
 
-// ════════════════════════════════════════
-//  Drive API — 파일 읽기/쓰기
-// ════════════════════════════════════════
-async function driveListFiles() {
-  const resp = await gapi.client.drive.files.list({
-    spaces: 'appDataFolder',
-    fields: 'files(id,name)',
-    pageSize: 10,
+// ── Drive API ──
+async function driveList() { const r = await gapi.client.drive.files.list({ spaces:'appDataFolder', fields:'files(id,name)', pageSize:10 }); return r.result.files||[]; }
+async function driveRead(id) { const r = await gapi.client.drive.files.get({ fileId:id, alt:'media' }); return r.result; }
+async function driveCreate(name, content) {
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method:'POST', headers:{ Authorization:`Bearer ${state.accessToken}`, 'Content-Type':'multipart/related; boundary=__b__' },
+    body:`--__b__\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({name,parents:['appDataFolder']})}\r\n--__b__\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(content)}\r\n--__b__--`
   });
-  return resp.result.files || [];
+  return (await r.json()).id;
 }
-
-async function driveReadFile(fileId) {
-  const resp = await gapi.client.drive.files.get({
-    fileId,
-    alt: 'media',
-  });
-  return resp.result;
-}
-
-async function driveCreateFile(name, content) {
-  const metadata = { name, parents: ['appDataFolder'] };
-  const body = JSON.stringify(content);
-  const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${state.accessToken}`,
-      'Content-Type': 'multipart/related; boundary=boundary_fc',
-    },
-    body: `--boundary_fc\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n--boundary_fc\r\nContent-Type: application/json\r\n\r\n${body}\r\n--boundary_fc--`,
-  });
-  const data = await resp.json();
-  return data.id;
-}
-
-async function driveUpdateFile(fileId, content) {
-  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${state.accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(content),
+async function driveUpdate(id, content) {
+  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, {
+    method:'PATCH', headers:{ Authorization:`Bearer ${state.accessToken}`, 'Content-Type':'application/json' }, body:JSON.stringify(content)
   });
 }
+async function driveUpsert(name, ref, content) { if(ref.id) await driveUpdate(ref.id,content); else ref.id = await driveCreate(name,content); }
 
-async function driveUpsertFile(filename, fileIdRef, content) {
-  if (fileIdRef.id) {
-    await driveUpdateFile(fileIdRef.id, content);
-  } else {
-    fileIdRef.id = await driveCreateFile(filename, content);
-  }
-}
-
-// ════════════════════════════════════════
-//  데이터 로드 / 저장
-// ════════════════════════════════════════
+// ── 데이터 ──
 async function loadAllData() {
   showLoading('데이터 불러오는 중...');
   try {
-    const files = await driveListFiles();
-    const decksFile    = files.find(f => f.name === DECKS_FILENAME);
-    const progressFile = files.find(f => f.name === PROGRESS_FILENAME);
+    const files = await driveList();
+    const df = files.find(f=>f.name===DECKS_FILE), pf = files.find(f=>f.name===PROGRESS_FILE);
+    if (df) { state.decksFileId=df.id; state.decks=(await driveRead(df.id)).decks||[]; }
+    else { state.decks=getSample(); await saveDecks(); }
+    if (pf) { state.progressFileId=pf.id; state.progress=(await driveRead(pf.id)).progress||{}; }
+    else { state.progress={}; await saveProgress(); }
+    renderUserHeader(); document.getElementById('tab-bar').style.display='flex'; showHome(); showSyncDone();
+  } catch(e) { console.error(e); showToast('데이터 로드 실패'); }
+  finally { hideLoading(); }
+}
+async function saveDecks() { const r={id:state.decksFileId}; await driveUpsert(DECKS_FILE,r,{version:1,decks:state.decks}); state.decksFileId=r.id; }
+async function saveProgress() { const r={id:state.progressFileId}; await driveUpsert(PROGRESS_FILE,r,{version:1,progress:state.progress}); state.progressFileId=r.id; }
+async function saveAll() { await Promise.all([saveDecks(),saveProgress()]); showSyncDone(); }
 
-    if (decksFile) {
-      state.decksFileId = decksFile.id;
-      const data = await driveReadFile(decksFile.id);
-      state.decks = data.decks || [];
-    } else {
-      // 처음 사용자 — 샘플 덱 생성
-      state.decks = [{
-        id: 'deck_' + Date.now(),
-        name: '샘플 덱',
-        emoji: '📚',
-        cards: [
-          { id: 'card_1', front: '서로 관련된 객체들의 패밀리를 생성하기 위해 인터페이스를 제공하는 생성 패턴', back: 'Abstract Factory', hint: '구체 클래스 명시 없이 생성' },
-          { id: 'card_2', front: '객체의 인스턴스가 오직 하나만 생성되도록 보장하는 생성 패턴', back: 'Singleton', hint: '전역 단일 인스턴스' },
-          { id: 'card_3', front: '호환되지 않는 인터페이스를 변환해주는 구조 패턴', back: 'Adapter', hint: '인터페이스 변환기' },
-        ]
-      }];
-      await saveDecks();
-    }
-
-    if (progressFile) {
-      state.progressFileId = progressFile.id;
-      const data = await driveReadFile(progressFile.id);
-      state.progress = data.progress || {};
-    } else {
-      state.progress = {};
-      await saveProgress();
-    }
-
-    renderUserHeader();
-    showHome();
-    document.getElementById('tab-bar').style.display = 'flex';
-    showSyncIndicator();
-  } catch(e) {
-    console.error(e);
-    showToast('데이터 로드 실패: ' + e.message);
-  } finally {
-    hideLoading();
-  }
+function getSample() {
+  return [{id:'deck_1',name:'샘플 덱',emoji:'📚',cards:[
+    {id:'c1',front:'서로 관련된 객체들의 패밀리를 생성하기 위해 인터페이스를 제공하는 생성 패턴',back:'Abstract Factory',hint:'구체 클래스 명시 없이 생성'},
+    {id:'c2',front:'객체의 인스턴스가 오직 하나만 생성되도록 보장하는 생성 패턴',back:'Singleton',hint:'전역 단일 인스턴스'},
+    {id:'c3',front:'호환되지 않는 인터페이스를 변환해주는 구조 패턴',back:'Adapter',hint:'인터페이스 변환기'},
+  ]}];
+}
+function getDeckProgress(id) {
+  if(!state.progress[id]) state.progress[id]={lastStudied:null,totalSessions:0,cards:{},sessions:[],pendingSession:null};
+  return state.progress[id];
+}
+function getCardProgress(deckId,cardId) {
+  const dp=getDeckProgress(deckId);
+  if(!dp.cards[cardId]) dp.cards[cardId]={status:null,starred:false};
+  return dp.cards[cardId];
+}
+function cleanOrphanProgress(deckId,validIds) {
+  const dp=state.progress[deckId]; if(!dp) return;
+  Object.keys(dp.cards).forEach(id=>{ if(!validIds.includes(id)) delete dp.cards[id]; });
 }
 
-async function saveDecks() {
-  const ref = { id: state.decksFileId };
-  await driveUpsertFile(DECKS_FILENAME, ref, { version: 1, decks: state.decks });
-  state.decksFileId = ref.id;
-}
-
-async function saveProgress() {
-  const ref = { id: state.progressFileId };
-  await driveUpsertFile(PROGRESS_FILENAME, ref, { version: 1, progress: state.progress });
-  state.progressFileId = ref.id;
-}
-
-async function saveAll() {
-  await Promise.all([saveDecks(), saveProgress()]);
-  showSyncIndicator();
-}
-
-// ── progress 헬퍼 ──
-function getCardProgress(deckId, cardId) {
-  if (!state.progress[deckId]) state.progress[deckId] = { lastStudied: null, totalSessions: 0, cards: {}, sessions: [] };
-  if (!state.progress[deckId].cards[cardId]) state.progress[deckId].cards[cardId] = { status: null, starred: false };
-  return state.progress[deckId].cards[cardId];
-}
-
-function getDeckProgress(deckId) {
-  if (!state.progress[deckId]) state.progress[deckId] = { lastStudied: null, totalSessions: 0, cards: {}, sessions: [] };
-  return state.progress[deckId];
-}
-
-// 덱 편집 시 삭제된 카드 id 정리
-function cleanOrphanProgress(deckId, validCardIds) {
-  const dp = state.progress[deckId];
-  if (!dp) return;
-  Object.keys(dp.cards).forEach(cid => {
-    if (!validCardIds.includes(cid)) delete dp.cards[cid];
-  });
-}
-
-// ════════════════════════════════════════
-//  UI 유틸
-// ════════════════════════════════════════
-function showLoading(txt) {
-  document.getElementById('loading-text').textContent = txt || '처리 중...';
-  document.getElementById('loading-overlay').style.display = 'flex';
-}
-function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-function showSyncIndicator() {
-  const el = document.getElementById('sync-indicator');
-  el.style.display = 'inline';
-  el.textContent = '✓ 동기화됨';
-  el.className = 'sync-status';
-}
-
-function showLoginScreen() {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-login').style.display = 'flex';
-}
-
+// ── UI 유틸 ──
+function showLoading(txt) { document.getElementById('loading-text').textContent=txt||'처리 중...'; document.getElementById('loading-overlay').style.display='flex'; }
+function hideLoading() { document.getElementById('loading-overlay').style.display='none'; }
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function showSyncDone() { const el=document.getElementById('sync-indicator'); el.style.display='inline'; setTimeout(()=>el.style.display='none',2000); }
+function showLoginScreen() { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-login').style.display='flex'; }
 function showScreen(id) {
-  document.getElementById('screen-login').style.display = 'none';
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const tabMap = { home: 'tab-home', starred: 'tab-starred', stats: 'tab-stats' };
-  if (tabMap[id]) document.getElementById(tabMap[id]).classList.add('active');
-  const showTab = ['home', 'starred', 'stats'].includes(id);
-  document.getElementById('tab-bar').style.display = showTab ? 'flex' : 'none';
+  document.getElementById('screen-login').style.display='none';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const map={home:'tab-home',starred:'tab-starred',stats:'tab-stats'};
+  if(map[id]) document.getElementById(map[id]).classList.add('active');
+  document.getElementById('tab-bar').style.display=['home','starred','stats'].includes(id)?'flex':'none';
 }
-
 function renderUserHeader() {
-  const wrap = document.getElementById('user-avatar-wrap');
-  const nameEl = document.getElementById('user-name-text');
-  if (state.user) {
-    if (state.user.picture) {
-      wrap.innerHTML = `<img class="user-avatar" src="${state.user.picture}" referrerpolicy="no-referrer">`;
-    } else {
-      const initial = (state.user.name || state.user.email || '?')[0].toUpperCase();
-      wrap.innerHTML = `<div class="user-avatar-placeholder">${initial}</div>`;
-    }
-    nameEl.textContent = state.user.name || state.user.email || '';
-  }
+  const wrap=document.getElementById('user-avatar-wrap'), nameEl=document.getElementById('user-name-text');
+  if(!state.user) return;
+  wrap.innerHTML=state.user.picture?`<img class="user-avatar" src="${state.user.picture}" referrerpolicy="no-referrer">`:`<div class="user-avatar-ph">${(state.user.name||'?')[0].toUpperCase()}</div>`;
+  nameEl.textContent=state.user.name||state.user.email||'';
 }
 
-// ════════════════════════════════════════
-//  홈 / 별표 / 통계
-// ════════════════════════════════════════
+// ── 화면 ──
 function showHome() { renderHome(); showScreen('home'); }
 function showStarred() { renderStarred(); showScreen('starred'); }
 function showStats() { renderStats(); showScreen('stats'); }
+function showSettings() {
+  const t=localStorage.getItem('fc_theme')||'system';
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('theme-btn-'+t); if(el) el.classList.add('active');
+  showScreen('settings');
+}
 
 function renderHome() {
-  const list = document.getElementById('deck-list'); list.innerHTML = '';
-  state.decks.forEach(deck => {
-    const dp = getDeckProgress(deck.id);
-    const total = deck.cards.length;
-    const learned = deck.cards.filter(c => (dp.cards[c.id] || {}).status === 'know').length;
-    const pct = total ? Math.round(learned / total * 100) : 0;
-    const lastStudied = dp.lastStudied ? `마지막 학습: ${dp.lastStudied}` : '아직 학습 안 함';
-    const div = document.createElement('div'); div.className = 'deck-card';
-    div.innerHTML = `<span class="deck-emoji">${deck.emoji}</span>
+  const list=document.getElementById('deck-list'); list.innerHTML='';
+  state.decks.forEach(deck=>{
+    const dp=getDeckProgress(deck.id);
+    const total=deck.cards.length, learned=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='know').length;
+    const pct=total?Math.round(learned/total*100):0;
+    const last=dp.lastStudied?`마지막: ${dp.lastStudied}`:'아직 학습 안 함';
+    const div=document.createElement('div'); div.className='deck-card';
+    div.innerHTML=`<span class="deck-emoji">${deck.emoji}</span>
       <div class="deck-info">
-        <div class="deck-name">${deck.name}</div>
-        <div class="deck-meta">${total}개 카드 · ${learned}/${total} 완료 · ${lastStudied}</div>
+        <div class="deck-name">${deck.name}${dp.pendingSession?'<span class="resume-badge">이어하기</span>':''}</div>
+        <div class="deck-meta">${total}개 카드 · ${learned}/${total} 완료 · ${last}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
         <div class="deck-pct">${pct}%</div>
         <button onclick="event.stopPropagation();editDeck('${deck.id}')" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 10px;font-family:inherit">편집</button>
       </div>`;
-    div.onclick = () => startStudy(deck.id);
+    div.onclick=()=>tryStartStudy(deck.id);
     list.appendChild(div);
   });
 }
 
 function renderStarred() {
-  const list = document.getElementById('starred-list'); list.innerHTML = '';
-  let found = false;
-  state.decks.forEach(deck => {
-    const dp = getDeckProgress(deck.id);
-    const starred = deck.cards.filter(c => (dp.cards[c.id] || {}).starred);
-    if (!starred.length) return; found = true;
-    const h = document.createElement('div'); h.className = 'section-title';
-    h.textContent = deck.emoji + ' ' + deck.name; list.appendChild(h);
-    starred.forEach(card => {
-      const div = document.createElement('div'); div.className = 'starred-card';
-      div.innerHTML = `<span style="font-size:18px">⭐</span><div>
-        <div style="font-weight:700;color:var(--text);font-size:14px">${card.front}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${card.back}</div>
-      </div>`;
+  const list=document.getElementById('starred-list'); list.innerHTML=''; let found=false;
+  state.decks.forEach(deck=>{
+    const dp=getDeckProgress(deck.id);
+    const starred=deck.cards.filter(c=>(dp.cards[c.id]||{}).starred);
+    if(!starred.length) return; found=true;
+    const h=document.createElement('div'); h.className='section-title'; h.textContent=deck.emoji+' '+deck.name; list.appendChild(h);
+    starred.forEach(card=>{
+      const div=document.createElement('div'); div.className='starred-card';
+      div.innerHTML=`<span style="font-size:18px">⭐</span><div><div style="font-weight:700;font-size:14px">${card.front}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${card.back}</div></div>`;
       list.appendChild(div);
     });
   });
-  if (!found) list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">별표 카드가 없어요</div>';
+  if(!found) list.innerHTML='<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">별표 카드가 없어요</div>';
 }
 
 function renderStats() {
-  const list = document.getElementById('stats-list'); list.innerHTML = '';
-  if (!state.decks.length) {
-    list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">덱이 없어요</div>';
-    return;
-  }
-  state.decks.forEach(deck => {
-    const dp = getDeckProgress(deck.id);
-    const total = deck.cards.length;
-    const know  = deck.cards.filter(c => (dp.cards[c.id]||{}).status === 'know').length;
-    const maybe = deck.cards.filter(c => (dp.cards[c.id]||{}).status === 'maybe').length;
-    const dont  = deck.cards.filter(c => (dp.cards[c.id]||{}).status === 'dont').length;
-
-    const div = document.createElement('div'); div.className = 'stats-card';
-    let sessionsHtml = '';
-    const sessions = (dp.sessions || []).slice(-5).reverse();
-    if (sessions.length) {
-      sessionsHtml = `<div class="section-title" style="margin-top:12px">최근 학습 기록</div>` +
-        sessions.map(s => `
-          <div class="session-item">
-            <span class="session-date">${s.date}</span>
-            <div class="session-scores">
-              <span style="color:var(--green)">✅${s.know}</span>
-              <span style="color:var(--yellow)">💭${s.maybe}</span>
-              <span style="color:var(--accent2)">😅${s.dont}</span>
-            </div>
-          </div>`).join('');
-    }
-    div.innerHTML = `
-      <div class="stats-title">${deck.emoji} ${deck.name}</div>
+  const list=document.getElementById('stats-list'); list.innerHTML='';
+  if(!state.decks.length){ list.innerHTML='<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">덱이 없어요</div>'; return; }
+  state.decks.forEach(deck=>{
+    const dp=getDeckProgress(deck.id);
+    const total=deck.cards.length;
+    const know=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='know').length;
+    const maybe=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='maybe').length;
+    const dont=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='dont').length;
+    const sessions=(dp.sessions||[]).slice(-5).reverse();
+    const sessHtml=sessions.length?`<div class="section-title" style="margin-top:12px">최근 학습 기록</div>${sessions.map(s=>`<div class="session-item"><span class="session-date">${s.date}${s.completed===false?' (미완료)':''}</span><div class="session-scores"><span style="color:#16a34a">✅${s.know}</span><span style="color:#d97706">💭${s.maybe}</span><span style="color:#e53e3e">😅${s.dont}</span></div></div>`).join('')}`:'';
+    const div=document.createElement('div'); div.className='stats-card';
+    div.innerHTML=`<div class="stats-title">${deck.emoji} ${deck.name}</div>
       <div class="stats-row"><span class="stats-label">총 카드</span><span class="stats-val">${total}개</span></div>
-      <div class="stats-row"><span class="stats-label">✅ 알았어요</span><span class="stats-val" style="color:var(--green)">${know}개</span></div>
-      <div class="stats-row"><span class="stats-label">💭 애매해요</span><span class="stats-val" style="color:var(--yellow)">${maybe}개</span></div>
-      <div class="stats-row"><span class="stats-label">😅 몰랐어요</span><span class="stats-val" style="color:var(--accent2)">${dont}개</span></div>
-      <div class="stats-row"><span class="stats-label">총 학습 횟수</span><span class="stats-val">${dp.totalSessions || 0}회</span></div>
-      <div class="stats-row"><span class="stats-label">마지막 학습</span><span class="stats-val">${dp.lastStudied || '-'}</span></div>
-      ${sessionsHtml}
-    `;
+      <div class="stats-row"><span class="stats-label">✅ 알았어요</span><span class="stats-val" style="color:#16a34a">${know}개</span></div>
+      <div class="stats-row"><span class="stats-label">💭 애매해요</span><span class="stats-val" style="color:#d97706">${maybe}개</span></div>
+      <div class="stats-row"><span class="stats-label">😅 몰랐어요</span><span class="stats-val" style="color:#e53e3e">${dont}개</span></div>
+      <div class="stats-row"><span class="stats-label">총 학습 횟수</span><span class="stats-val">${dp.totalSessions||0}회</span></div>
+      <div class="stats-row"><span class="stats-label">마지막 학습</span><span class="stats-val">${dp.lastStudied||'-'}</span></div>${sessHtml}`;
     list.appendChild(div);
   });
 }
 
-// ════════════════════════════════════════
-//  학습
-// ════════════════════════════════════════
-function startStudy(deckId) {
-  const deck = state.decks.find(d => d.id === deckId);
-  if (!deck || !deck.cards.length) return alert('카드가 없어요!');
-  state.studyDeck = deck;
-  state.studyQueue = [...deck.cards].sort(() => Math.random() - 0.5);
-  state.studyIdx = 0;
-  state.studyResults = { know: 0, maybe: 0, dont: 0 };
-  state.currentSessionStart = new Date().toISOString().split('T')[0];
-  document.getElementById('study-deck-name').textContent = deck.name;
+// ── 학습 ──
+function tryStartStudy(deckId) {
+  const dp=getDeckProgress(deckId);
+  if(dp.pendingSession) {
+    state.pendingDeckId=deckId;
+    const p=dp.pendingSession, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
+    document.getElementById('resume-modal-sub').textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
+    document.getElementById('resume-modal').style.display='flex';
+  } else { startFresh(deckId); }
+}
+function startFresh(deckId) {
+  document.getElementById('resume-modal').style.display='none';
+  const id=deckId||state.pendingDeckId;
+  const deck=state.decks.find(d=>d.id===id); if(!deck) return;
+  getDeckProgress(id).pendingSession=null;
+  state.studyDeck=deck; state.studyQueue=[...deck.cards].sort(()=>Math.random()-.5);
+  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
+  document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
+}
+function resumeStudy() {
+  document.getElementById('resume-modal').style.display='none';
+  const deck=state.decks.find(d=>d.id===state.pendingDeckId); if(!deck) return;
+  const p=getDeckProgress(state.pendingDeckId).pendingSession;
+  state.studyDeck=deck;
+  state.studyQueue=p.remainingIds.map(id=>deck.cards.find(c=>c.id===id)).filter(Boolean);
+  state.studyIdx=0; state.studyResults={...p.results};
+  document.getElementById('study-deck-name').textContent=deck.name;
+  showScreen('study'); renderStudyCard();
+}
+function exitStudy() {
+  if(state.studyDeck && state.studyIdx < state.studyQueue.length) {
+    const dp=getDeckProgress(state.studyDeck.id);
+    const today=new Date().toISOString().split('T')[0];
+    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
+    dp.lastStudied=today;
+    if(!dp.sessions) dp.sessions=[];
+    dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:false});
+    if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
+    saveProgress();
+  }
+  showHome();
 }
 
 function renderStudyCard() {
-  const q = state.studyQueue; const i = state.studyIdx;
-  if (i >= q.length) { showDone(); return; }
-  const card = q[i];
-  const cp = getCardProgress(state.studyDeck.id, card.id);
-  state.studyFlipped = false; state.studyShowHint = false;
-
-  document.getElementById('study-progress-text').textContent = `${i+1} / ${q.length}`;
-  document.getElementById('study-progress-fill').style.width = `${(i / q.length) * 100}%`;
-  document.getElementById('card-front-face').style.display = 'block';
-  document.getElementById('card-back-face').style.display = 'none';
-
-  const frontText = document.getElementById('card-front-text');
-  frontText.textContent = card.front; setFontSize(frontText, card.front);
-  const backText = document.getElementById('card-back-text');
-  backText.textContent = card.back; setFontSize(backText, card.back);
-
-  document.getElementById('card-hint-back').textContent = card.hint ? '💡 ' + card.hint : '';
-  document.getElementById('star-btn').classList.toggle('starred', !!cp.starred);
-
-  const hintBtn = document.getElementById('hint-btn');
-  if (card.hint) { hintBtn.style.display = 'block'; hintBtn.textContent = '💡 힌트 보기'; }
-  else { hintBtn.style.display = 'none'; }
-
-  document.getElementById('answer-btns').style.display = 'none';
-  document.getElementById('btn-prev').disabled = (i === 0);
-  document.getElementById('btn-next').disabled = (i >= q.length - 1);
+  const q=state.studyQueue, i=state.studyIdx;
+  if(i>=q.length){ showDone(); return; }
+  const card=q[i], cp=getCardProgress(state.studyDeck.id,card.id);
+  state.studyFlipped=false; state.studyShowHint=false;
+  const done=state.studyResults.know+state.studyResults.maybe+state.studyResults.dont;
+  const total=state.studyDeck.cards.length;
+  document.getElementById('study-progress-text').textContent=`${done+1} / ${total}`;
+  document.getElementById('study-progress-fill').style.width=`${(done/total)*100}%`;
+  document.getElementById('card-front-face').style.display='flex';
+  document.getElementById('card-back-face').style.display='none';
+  const ft=document.getElementById('card-front-text'); ft.textContent=card.front; setFontSize(ft,card.front);
+  const bt=document.getElementById('card-back-text'); bt.textContent=card.back; setFontSize(bt,card.back);
+  document.getElementById('card-hint-back').textContent=card.hint?'💡 '+card.hint:'';
+  document.getElementById('star-btn').classList.toggle('starred',!!cp.starred);
+  const hb=document.getElementById('hint-btn');
+  if(card.hint){ hb.style.display='block'; hb.textContent='💡 힌트 보기'; } else { hb.style.display='none'; }
+  document.getElementById('answer-btns').style.display='none';
+  document.getElementById('btn-prev').disabled=(i===0);
+  document.getElementById('btn-next').disabled=(i>=q.length-1);
 }
-
 function flipCard() {
-  state.studyFlipped = !state.studyFlipped;
-  document.getElementById('card-front-face').style.display = state.studyFlipped ? 'none' : 'block';
-  document.getElementById('card-back-face').style.display = state.studyFlipped ? 'block' : 'none';
-  document.getElementById('answer-btns').style.display = state.studyFlipped ? 'flex' : 'none';
-  if (state.studyFlipped) document.getElementById('hint-btn').style.display = 'none';
+  state.studyFlipped=!state.studyFlipped;
+  document.getElementById('card-front-face').style.display=state.studyFlipped?'none':'flex';
+  document.getElementById('card-back-face').style.display=state.studyFlipped?'flex':'none';
+  document.getElementById('answer-btns').style.display=state.studyFlipped?'flex':'none';
+  document.getElementById('hint-btn').style.display='none';
 }
-
-function prevCard() { if (state.studyIdx > 0) { state.studyIdx--; renderStudyCard(); } }
-function 다음Card() { if (state.studyIdx < state.studyQueue.length - 1) { state.studyIdx++; renderStudyCard(); } }
-// nextCard 별칭
-function nextCard() { 다음Card(); }
-
+function prevCard(){ if(state.studyIdx>0){ state.studyIdx--; renderStudyCard(); } }
+function nextCard(){ if(state.studyIdx<state.studyQueue.length-1){ state.studyIdx++; renderStudyCard(); } }
 function toggleHint() {
-  const card = state.studyQueue[state.studyIdx]; if (!card || !card.hint) return;
-  state.studyShowHint = !state.studyShowHint;
-  document.getElementById('hint-btn').textContent = state.studyShowHint ? `💡 ${card.hint}` : '💡 힌트 보기';
+  const card=state.studyQueue[state.studyIdx]; if(!card?.hint) return;
+  state.studyShowHint=!state.studyShowHint;
+  document.getElementById('hint-btn').textContent=state.studyShowHint?`💡 ${card.hint}`:'💡 힌트 보기';
 }
-
 function toggleStar(e) {
   e.stopPropagation();
-  const card = state.studyQueue[state.studyIdx]; if (!card) return;
-  const cp = getCardProgress(state.studyDeck.id, card.id);
-  cp.starred = !cp.starred;
-  document.getElementById('star-btn').classList.toggle('starred', cp.starred);
+  const card=state.studyQueue[state.studyIdx]; if(!card) return;
+  const cp=getCardProgress(state.studyDeck.id,card.id); cp.starred=!cp.starred;
+  document.getElementById('star-btn').classList.toggle('starred',cp.starred);
   saveProgress();
 }
-
 function answer(type) {
-  const card = state.studyQueue[state.studyIdx]; if (!card) return;
-  const cp = getCardProgress(state.studyDeck.id, card.id);
-  cp.status = type;
-  state.studyResults[type]++;
-  state.studyIdx++;
-  saveProgress(); // 비동기 저장 (기다리지 않음)
-  renderStudyCard();
+  const card=state.studyQueue[state.studyIdx]; if(!card) return;
+  getCardProgress(state.studyDeck.id,card.id).status=type;
+  state.studyResults[type]++; state.studyIdx++;
+  saveProgress(); renderStudyCard();
 }
-
 function showDone() {
-  // 세션 기록 저장
-  const dp = getDeckProgress(state.studyDeck.id);
-  dp.lastStudied = state.currentSessionStart;
-  dp.totalSessions = (dp.totalSessions || 0) + 1;
-  if (!dp.sessions) dp.sessions = [];
-  dp.sessions.push({
-    date: state.currentSessionStart,
-    know: state.studyResults.know,
-    maybe: state.studyResults.maybe,
-    dont: state.studyResults.dont,
-  });
-  // 최대 50회차만 보관
-  if (dp.sessions.length > 50) dp.sessions = dp.sessions.slice(-50);
-
+  const dp=getDeckProgress(state.studyDeck.id);
+  const today=new Date().toISOString().split('T')[0];
+  dp.lastStudied=today; dp.totalSessions=(dp.totalSessions||0)+1; dp.pendingSession=null;
+  if(!dp.sessions) dp.sessions=[];
+  dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:true});
+  if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
   saveProgress();
-
   showScreen('done');
-  document.getElementById('done-sub').textContent = state.studyDeck.name + ' 전체를 다 봤어요';
-  document.getElementById('res-know').textContent = state.studyResults.know;
-  document.getElementById('res-maybe').textContent = state.studyResults.maybe;
-  document.getElementById('res-dont').textContent = state.studyResults.dont;
+  document.getElementById('done-sub').textContent=state.studyDeck.name+' 전체를 다 봤어요';
+  document.getElementById('res-know').textContent=state.studyResults.know;
+  document.getElementById('res-maybe').textContent=state.studyResults.maybe;
+  document.getElementById('res-dont').textContent=state.studyResults.dont;
 }
 
-// ════════════════════════════════════════
-//  덱 추가/편집
-// ════════════════════════════════════════
+// ── 덱 추가/편집 ──
 function showAddDeck(deckId) {
-  state.editingDeckId = deckId || null;
-  state.selectedEmoji = '📚'; state.cardInputs = [];
-  document.getElementById('adddeck-title').textContent = deckId ? '덱 편집' : '새 덱 만들기';
-  document.getElementById('delete-deck-btn').style.display = deckId ? 'block' : 'none';
-  document.getElementById('csv-text').textContent = '파일 선택 (CSV 또는 TXT)';
-  document.getElementById('csv-text').style.color = 'var(--muted)';
-  document.getElementById('csv-input').value = '';
-
-  const emojiRow = document.getElementById('emoji-row'); emojiRow.innerHTML = '';
-  EMOJIS.forEach(e => {
-    const btn = document.createElement('button');
-    btn.className = 'emoji-btn' + (e === state.selectedEmoji ? ' selected' : '');
-    btn.textContent = e;
-    btn.onclick = () => {
-      state.selectedEmoji = e;
-      document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    };
+  state.editingDeckId=deckId||null; state.selectedEmoji='📚'; state.cardInputs=[];
+  document.getElementById('adddeck-title').textContent=deckId?'덱 편집':'새 덱 만들기';
+  document.getElementById('delete-deck-btn').style.display=deckId?'block':'none';
+  document.getElementById('csv-text').textContent='파일 선택 (CSV 또는 TXT)';
+  document.getElementById('csv-text').style.color='var(--muted)';
+  document.getElementById('csv-input').value='';
+  const emojiRow=document.getElementById('emoji-row'); emojiRow.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const btn=document.createElement('button'); btn.className='emoji-btn'+(e===state.selectedEmoji?' selected':''); btn.textContent=e;
+    btn.onclick=()=>{ state.selectedEmoji=e; document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); };
     emojiRow.appendChild(btn);
   });
-
-  if (deckId) {
-    const deck = state.decks.find(d => d.id === deckId);
-    document.getElementById('deck-name-input').value = deck.name;
-    state.selectedEmoji = deck.emoji;
-    document.querySelectorAll('.emoji-btn').forEach(b => {
-      b.classList.toggle('selected', b.textContent === deck.emoji);
-    });
-    state.cardInputs = deck.cards.map(c => ({ ...c }));
+  if(deckId) {
+    const deck=state.decks.find(d=>d.id===deckId);
+    document.getElementById('deck-name-input').value=deck.name;
+    state.selectedEmoji=deck.emoji;
+    document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent===deck.emoji));
+    state.cardInputs=deck.cards.map(c=>({...c}));
   } else {
-    document.getElementById('deck-name-input').value = '';
-    state.cardInputs = [{ id: 'card_' + Date.now(), front: '', back: '', hint: '' }];
+    document.getElementById('deck-name-input').value='';
+    state.cardInputs=[{id:'card_'+Date.now(),front:'',back:'',hint:''}];
   }
   renderCardInputs(); showScreen('adddeck');
 }
-function editDeck(id) { showAddDeck(id); }
-
+function editDeck(id){ showAddDeck(id); }
 function renderCardInputs() {
-  const container = document.getElementById('card-inputs'); container.innerHTML = '';
-  state.cardInputs.forEach((card, i) => {
-    const div = document.createElement('div'); div.className = 'card-item';
-    div.innerHTML = `<div class="card-item-header">
-        <span class="card-item-num">카드 ${i+1}</span>
-        ${state.cardInputs.length > 1 ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : ''}
-      </div>
+  const container=document.getElementById('card-inputs'); container.innerHTML='';
+  state.cardInputs.forEach((card,i)=>{
+    const div=document.createElement('div'); div.className='card-item';
+    div.innerHTML=`<div class="card-item-header"><span class="card-item-num">카드 ${i+1}</span>${state.cardInputs.length>1?`<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>`:''}</div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
     container.appendChild(div);
   });
 }
-function addCardInput() {
-  state.cardInputs.push({ id: 'card_' + Date.now() + Math.random(), front: '', back: '', hint: '' });
-  renderCardInputs();
-}
-function removeCardInput(i) { state.cardInputs.splice(i, 1); renderCardInputs(); }
-
+function addCardInput(){ state.cardInputs.push({id:'card_'+Date.now()+Math.random(),front:'',back:'',hint:''}); renderCardInputs(); }
+function removeCardInput(i){ state.cardInputs.splice(i,1); renderCardInputs(); }
 function handleCSV(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
-    const cards = lines.map((line, idx) => {
-      const parts = parseCSVLine(line);
-      return { id: 'card_' + Date.now() + idx, front: parts[0]||'', back: parts[1]||'', hint: parts[2]||'' };
-    }).filter(c => c.front && c.back);
-    if (!cards.length) { alert('유효한 카드가 없어요. 형식: 앞면,뒷면,힌트'); return; }
-    state.cardInputs = cards; renderCardInputs();
-    const txt = document.getElementById('csv-text');
-    txt.textContent = `✅ ${cards.length}개 카드 불러옴`; txt.style.color = '#4ade80';
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+    const cards=lines.map((line,idx)=>{ const p=parseCSVLine(line); return {id:'card_'+Date.now()+idx,front:p[0]||'',back:p[1]||'',hint:p[2]||''}; }).filter(c=>c.front&&c.back);
+    if(!cards.length){ alert('유효한 카드가 없어요'); return; }
+    state.cardInputs=cards; renderCardInputs();
+    const txt=document.getElementById('csv-text'); txt.textContent=`✅ ${cards.length}개 카드 불러옴`; txt.style.color='#16a34a';
   };
-  reader.readAsText(file, 'UTF-8');
+  reader.readAsText(file,'UTF-8');
 }
-
 async function saveDeck() {
-  const name = document.getElementById('deck-name-input').value.trim();
-  if (!name) { alert('덱 이름을 입력해주세요'); return; }
-  const valid = state.cardInputs.filter(c => c.front.trim() && c.back.trim());
-  if (!valid.length) { alert('카드를 최소 1개 입력해주세요'); return; }
-
+  const name=document.getElementById('deck-name-input').value.trim();
+  if(!name){ alert('덱 이름을 입력해주세요'); return; }
+  const valid=state.cardInputs.filter(c=>c.front.trim()&&c.back.trim());
+  if(!valid.length){ alert('카드를 최소 1개 입력해주세요'); return; }
   showLoading('저장 중...');
   try {
-    if (state.editingDeckId) {
-      const idx = state.decks.findIndex(d => d.id === state.editingDeckId);
-      if (idx !== -1) {
-        state.decks[idx] = { ...state.decks[idx], name, emoji: state.selectedEmoji, cards: valid };
-        // 고아 progress 정리
-        cleanOrphanProgress(state.editingDeckId, valid.map(c => c.id));
-      }
-    } else {
-      state.decks.push({ id: 'deck_' + Date.now(), name, emoji: state.selectedEmoji, cards: valid });
-    }
-    await saveAll();
-    showToast('저장 완료!');
-    showHome();
-  } catch(e) {
-    showToast('저장 실패: ' + e.message);
-  } finally {
-    hideLoading();
-  }
+    if(state.editingDeckId) {
+      const idx=state.decks.findIndex(d=>d.id===state.editingDeckId);
+      if(idx!==-1){ state.decks[idx]={...state.decks[idx],name,emoji:state.selectedEmoji,cards:valid}; cleanOrphanProgress(state.editingDeckId,valid.map(c=>c.id)); }
+    } else { state.decks.push({id:'deck_'+Date.now(),name,emoji:state.selectedEmoji,cards:valid}); }
+    await saveAll(); showToast('저장 완료!'); showHome();
+  } catch(e){ showToast('저장 실패: '+e.message); } finally { hideLoading(); }
 }
-
 async function deleteDeck() {
-  if (!confirm('이 덱을 삭제할까요?')) return;
+  if(!confirm('이 덱을 삭제할까요?')) return;
   showLoading('삭제 중...');
   try {
-    state.decks = state.decks.filter(d => d.id !== state.editingDeckId);
+    state.decks=state.decks.filter(d=>d.id!==state.editingDeckId);
     delete state.progress[state.editingDeckId];
-    await saveAll();
-    showToast('삭제 완료!');
-    showHome();
-  } catch(e) {
-    showToast('삭제 실패: ' + e.message);
-  } finally {
-    hideLoading();
-  }
+    await saveAll(); showToast('삭제 완료!'); showHome();
+  } catch(e){ showToast('삭제 실패: '+e.message); } finally { hideLoading(); }
 }
 
-// ════════════════════════════════════════
-//  유틸
-// ════════════════════════════════════════
-function setFontSize(el, text) {
-  const len = text.length;
-  if (len <= 20) el.style.fontSize = '22px';
-  else if (len <= 40) el.style.fontSize = '18px';
-  else if (len <= 70) el.style.fontSize = '15px';
-  else el.style.fontSize = '13px';
+// ── 유틸 ──
+function setFontSize(el,text) {
+  const len=text.length;
+  if(len<=20) el.style.fontSize='22px';
+  else if(len<=40) el.style.fontSize='18px';
+  else if(len<=70) el.style.fontSize='15px';
+  else el.style.fontSize='13px';
 }
-
 function parseCSVLine(line) {
-  const fields = []; let cur = '', inQuote = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') { if (inQuote && line[i+1] === '"') { cur += '"'; i++; } else { inQuote = !inQuote; } }
-    else if (ch === ',' && !inQuote) { fields.push(cur.trim()); cur = ''; }
-    else { cur += ch; }
+  const fields=[]; let cur='',inQuote=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){ if(inQuote&&line[i+1]==='"'){ cur+='"'; i++; } else { inQuote=!inQuote; } }
+    else if(ch===','&&!inQuote){ fields.push(cur.trim()); cur=''; }
+    else { cur+=ch; }
   }
-  fields.push(cur.trim());
-  return fields;
+  fields.push(cur.trim()); return fields;
 }
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── 초기 화면: 로그인 ──
-document.getElementById('screen-login').style.display = 'flex';
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>
