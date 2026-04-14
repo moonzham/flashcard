@@ -44,7 +44,6 @@
   .user-name { font-size: 13px; color: var(--muted); }
   .header-btns { display: flex; gap: 8px; align-items: center; }
   .icon-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 13px; padding: 5px 10px; cursor: pointer; font-family: inherit; }
-  .local-only-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
   .deck-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; cursor: pointer; transition: transform .15s; display: flex; align-items: center; gap: 14px; }
   .deck-card:active { transform: scale(0.97); }
@@ -165,7 +164,7 @@
     <div class="header-btns">
       <span id="sync-indicator" style="display:none;font-size:12px;color:#16a34a">✓ 동기화됨</span>
       <button class="icon-btn" onclick="showSettings()">⚙️</button>
-      <button class="icon-btn auth-only" onclick="signOut()">로그아웃</button>
+      <button class="icon-btn" onclick="signOut()">로그아웃</button>
     </div>
   </div>
   <div class="home-label">암기 카드</div>
@@ -192,16 +191,6 @@
     <div><div class="nav-title">설정</div></div>
   </div>
   <div class="setting-group">
-    <div class="setting-row" style="display:block">
-      <div style="margin-bottom:10px">
-        <div class="setting-label">표시 이름</div>
-        <div class="setting-sub">앱 상단에 표시될 이름</div>
-      </div>
-      <input class="form-input" id="display-name-input" placeholder="이름을 입력하세요" style="margin-bottom:10px">
-      <button class="primary-btn" style="padding:10px 14px;font-size:13px" onclick="saveDisplayName()">이름 저장</button>
-    </div>
-  </div>
-  <div class="setting-group">
     <div class="setting-row">
       <div>
         <div class="setting-label">테마</div>
@@ -214,8 +203,7 @@
       </div>
     </div>
   </div>
-  <button class="danger-btn auth-only" onclick="signOut()">로그아웃</button>
-  <div class="local-only-note" id="local-mode-note" style="display:none">현재 브라우저(LocalStorage)에 자동 저장됩니다.</div>
+  <button class="danger-btn" onclick="signOut()">로그아웃</button>
 </div>
 
 <div id="screen-study" class="screen">
@@ -303,15 +291,9 @@
   <div class="modal">
     <div class="modal-title">이어서 공부할까요?</div>
     <div class="modal-sub" id="resume-modal-sub"></div>
-    <div class="section-title" style="margin-bottom:8px">다시 보기 필터</div>
-    <div class="setting-group" style="margin-bottom:16px">
-      <label class="setting-row" style="cursor:pointer"><span class="setting-label">✅ 알았어요 카드 포함</span><input type="checkbox" id="filter-know" checked></label>
-      <label class="setting-row" style="cursor:pointer"><span class="setting-label">💭 애매해요 카드 포함</span><input type="checkbox" id="filter-maybe" checked></label>
-      <label class="setting-row" style="cursor:pointer"><span class="setting-label">😅 몰랐어요 카드 포함</span><input type="checkbox" id="filter-dont" checked></label>
-    </div>
     <div class="modal-btns">
-      <button class="modal-btn modal-btn-secondary" id="start-fresh-btn" onclick="startFresh()">처음부터</button>
-      <button class="modal-btn modal-btn-primary" id="resume-btn" onclick="resumeStudy()">이어서 →</button>
+      <button class="modal-btn modal-btn-secondary" onclick="startFresh()">처음부터</button>
+      <button class="modal-btn modal-btn-primary"   onclick="resumeStudy()">이어서 →</button>
     </div>
   </div>
 </div>
@@ -322,9 +304,6 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
-const LOCAL_MODE = true;
-const LOCAL_DECKS_KEY = 'fc_local_decks';
-const LOCAL_PROGRESS_KEY = 'fc_local_progress';
 
 let state = {
   accessToken: null, user: null,
@@ -335,7 +314,6 @@ let state = {
   studyFlipped: false, studyShowHint: false,
   studyResults: {know:0,maybe:0,dont:0},
   selectedEmoji: '📚', cardInputs: [],
-  displayName: '',
 };
 
 // ── 테마 ──
@@ -347,10 +325,7 @@ function applyTheme(t) {
   if (el) el.classList.add('active');
 }
 function setTheme(t) { localStorage.setItem('fc_theme', t); applyTheme(t); }
-function loadTheme() {
-  applyTheme(localStorage.getItem('fc_theme') || 'system');
-  state.displayName = localStorage.getItem('fc_display_name') || '';
-}
+function loadTheme() { applyTheme(localStorage.getItem('fc_theme') || 'system'); }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   if ((localStorage.getItem('fc_theme') || 'system') === 'system') applyTheme('system');
 });
@@ -359,17 +334,9 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 let tokenClient;
 window.onload = () => {
   loadTheme();
-  applyModeUI();
-  if (LOCAL_MODE) { loadAllData(); return; }
   const s1 = document.createElement('script'); s1.src = 'https://accounts.google.com/gsi/client'; s1.onload = initGIS; document.head.appendChild(s1);
   const s2 = document.createElement('script'); s2.src = 'https://apis.google.com/js/api.js'; s2.onload = () => gapi.load('client', initGapiClient); document.head.appendChild(s2);
 };
-function applyModeUI() {
-  if (!LOCAL_MODE) return;
-  document.querySelectorAll('.auth-only').forEach(el => el.style.display = 'none');
-  const note=document.getElementById('local-mode-note');
-  if(note) note.style.display='block';
-}
 function initGIS() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
@@ -387,68 +354,21 @@ async function initGapiClient() {
   await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
 }
 async function tryAutoLogin() {
-  if (LOCAL_MODE) { await loadAllData(); return; }
   const saved = localStorage.getItem('fc_access_token');
-  if (saved) {
-    showLoading('로그인 확인 중...');
-    try {
-      const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${saved}` } });
-      if (!r.ok) throw new Error();
-      state.accessToken = saved; state.user = await r.json();
-      gapi.client.setToken({ access_token: saved });
-      await loadAllData();
-      return;
-    } catch { localStorage.removeItem('fc_access_token'); }
-  }
-  await silentSignIn();
-}
-async function silentSignIn() {
-  if (LOCAL_MODE) { await loadAllData(); return; }
-  showLoading('자동 로그인 시도 중...');
+  if (!saved) { showLoginScreen(); return; }
+  showLoading('로그인 확인 중...');
   try {
-    const token = await requestAccessToken('');
-    if (!token) throw new Error('NO_SESSION');
-    state.accessToken = token;
-    localStorage.setItem('fc_access_token', token);
-    gapi.client.setToken({ access_token: token });
-    await fetchUserInfo();
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${saved}` } });
+    if (!r.ok) throw new Error();
+    state.accessToken = saved; state.user = await r.json();
+    gapi.client.setToken({ access_token: saved });
     await loadAllData();
-  } catch {
-    hideLoading();
-    showLoginScreen();
-  }
-}
-function requestAccessToken(promptMode) {
-  return new Promise((resolve, reject) => {
-    tokenClient.callback = (resp) => {
-      if (resp?.error || !resp?.access_token) return reject(resp?.error || new Error('TOKEN_ERROR'));
-      resolve(resp.access_token);
-    };
-    tokenClient.requestAccessToken({ prompt: promptMode });
-  });
+  } catch { localStorage.removeItem('fc_access_token'); hideLoading(); showLoginScreen(); }
 }
 
 // ── 인증 ──
-async function signIn() {
-  if (LOCAL_MODE) { await loadAllData(); return; }
-  showLoading('Google 로그인 중...');
-  try {
-    const token = await requestAccessToken('');
-    state.accessToken = token;
-    localStorage.setItem('fc_access_token', token);
-    gapi.client.setToken({ access_token: token });
-    await fetchUserInfo();
-    await loadAllData();
-  } catch {
-    hideLoading();
-    showToast('로그인 실패');
-  }
-}
+function signIn() { showLoading('Google 로그인 중...'); tokenClient.requestAccessToken({ prompt: '' }); }
 function signOut() {
-  if (LOCAL_MODE) {
-    showToast('로컬 저장 모드에서는 로그아웃이 없어요');
-    return;
-  }
   if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, () => {});
   localStorage.removeItem('fc_access_token');
   Object.assign(state, { accessToken:null, user:null, decks:[], progress:{}, decksFileId:null, progressFileId:null });
@@ -480,13 +400,6 @@ async function driveUpsert(name, ref, content) { if(ref.id) await driveUpdate(re
 async function loadAllData() {
   showLoading('데이터 불러오는 중...');
   try {
-    if (LOCAL_MODE) {
-      state.decks = JSON.parse(localStorage.getItem(LOCAL_DECKS_KEY) || 'null') || getSample();
-      state.progress = JSON.parse(localStorage.getItem(LOCAL_PROGRESS_KEY) || 'null') || {};
-      state.user = { name: state.displayName || '내 기기', email: '' };
-      renderUserHeader(); document.getElementById('tab-bar').style.display='flex'; showHome(); showSyncDone();
-      return;
-    }
     const files = await driveList();
     const df = files.find(f=>f.name===DECKS_FILE), pf = files.find(f=>f.name===PROGRESS_FILE);
     if (df) { state.decksFileId=df.id; state.decks=(await driveRead(df.id)).decks||[]; }
@@ -497,14 +410,8 @@ async function loadAllData() {
   } catch(e) { console.error(e); showToast('데이터 로드 실패'); }
   finally { hideLoading(); }
 }
-async function saveDecks() {
-  if (LOCAL_MODE) { localStorage.setItem(LOCAL_DECKS_KEY, JSON.stringify(state.decks)); return; }
-  const r={id:state.decksFileId}; await driveUpsert(DECKS_FILE,r,{version:1,decks:state.decks}); state.decksFileId=r.id;
-}
-async function saveProgress() {
-  if (LOCAL_MODE) { localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(state.progress)); return; }
-  const r={id:state.progressFileId}; await driveUpsert(PROGRESS_FILE,r,{version:1,progress:state.progress}); state.progressFileId=r.id;
-}
+async function saveDecks() { const r={id:state.decksFileId}; await driveUpsert(DECKS_FILE,r,{version:1,decks:state.decks}); state.decksFileId=r.id; }
+async function saveProgress() { const r={id:state.progressFileId}; await driveUpsert(PROGRESS_FILE,r,{version:1,progress:state.progress}); state.progressFileId=r.id; }
 async function saveAll() { await Promise.all([saveDecks(),saveProgress()]); showSyncDone(); }
 
 function getSample() {
@@ -545,9 +452,9 @@ function showScreen(id) {
 }
 function renderUserHeader() {
   const wrap=document.getElementById('user-avatar-wrap'), nameEl=document.getElementById('user-name-text');
-  const displayName=(state.displayName||state.user?.name||state.user?.email||'내 기기').trim();
-  wrap.innerHTML=state.user?.picture?`<img class="user-avatar" src="${state.user.picture}" referrerpolicy="no-referrer">`:`<div class="user-avatar-ph">${(displayName||'?')[0].toUpperCase()}</div>`;
-  nameEl.textContent=displayName;
+  if(!state.user) return;
+  wrap.innerHTML=state.user.picture?`<img class="user-avatar" src="${state.user.picture}" referrerpolicy="no-referrer">`:`<div class="user-avatar-ph">${(state.user.name||'?')[0].toUpperCase()}</div>`;
+  nameEl.textContent=state.user.name||state.user.email||'';
 }
 
 // ── 화면 ──
@@ -558,15 +465,7 @@ function showSettings() {
   const t=localStorage.getItem('fc_theme')||'system';
   document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
   const el=document.getElementById('theme-btn-'+t); if(el) el.classList.add('active');
-  document.getElementById('display-name-input').value = state.displayName || state.user?.name || '';
   showScreen('settings');
-}
-function saveDisplayName() {
-  const v=document.getElementById('display-name-input').value.trim();
-  state.displayName=v;
-  localStorage.setItem('fc_display_name', v);
-  renderUserHeader();
-  showToast('이름을 저장했어요');
 }
 
 function renderHome() {
@@ -634,34 +533,19 @@ function renderStats() {
 // ── 학습 ──
 function tryStartStudy(deckId) {
   const dp=getDeckProgress(deckId);
-  state.pendingDeckId=deckId;
-  const resumeBtn=document.getElementById('resume-btn');
-  const titleEl=document.querySelector('#resume-modal .modal-title');
-  const subEl=document.getElementById('resume-modal-sub');
-  const filterBox=document.querySelector('#resume-modal .setting-group');
-  applyStudyFilters(deckId);
   if(dp.pendingSession) {
+    state.pendingDeckId=deckId;
     const p=dp.pendingSession, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
-    titleEl.textContent='이어서 공부할까요?';
-    subEl.textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
-    resumeBtn.style.display='block';
-    filterBox.style.display='none';
-  } else {
-    titleEl.textContent='학습 시작 옵션';
-    subEl.textContent='지난 학습 결과를 기준으로 다시 볼 카드를 고를 수 있어요';
-    resumeBtn.style.display='none';
-    filterBox.style.display='block';
-  }
-  document.getElementById('resume-modal').style.display='flex';
+    document.getElementById('resume-modal-sub').textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
+    document.getElementById('resume-modal').style.display='flex';
+  } else { startFresh(deckId); }
 }
 function startFresh(deckId) {
   document.getElementById('resume-modal').style.display='none';
   const id=deckId||state.pendingDeckId;
   const deck=state.decks.find(d=>d.id===id); if(!deck) return;
   getDeckProgress(id).pendingSession=null;
-  const filtered=getFilteredCards(deck);
-  if(!filtered.length){ showToast('선택한 조건에 해당하는 카드가 없어요'); return; }
-  state.studyDeck=deck; state.studyQueue=[...filtered].sort(()=>Math.random()-.5);
+  state.studyDeck=deck; state.studyQueue=[...deck.cards].sort(()=>Math.random()-.5);
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
@@ -675,30 +559,6 @@ function resumeStudy() {
   state.studyIdx=0; state.studyResults={...p.results};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
-}
-function applyStudyFilters(deckId){
-  const saved=JSON.parse(localStorage.getItem(`fc_study_filters_${deckId}`)||'{"know":true,"maybe":true,"dont":true}');
-  document.getElementById('filter-know').checked=!!saved.know;
-  document.getElementById('filter-maybe').checked=!!saved.maybe;
-  document.getElementById('filter-dont').checked=!!saved.dont;
-}
-function getStudyFilters(deckId){
-  const filters={
-    know:document.getElementById('filter-know').checked,
-    maybe:document.getElementById('filter-maybe').checked,
-    dont:document.getElementById('filter-dont').checked,
-  };
-  if(!filters.know&&!filters.maybe&&!filters.dont){ filters.dont=true; }
-  localStorage.setItem(`fc_study_filters_${deckId}`,JSON.stringify(filters));
-  return filters;
-}
-function getFilteredCards(deck){
-  const filters=getStudyFilters(deck.id);
-  return deck.cards.filter(card=>{
-    const st=(getCardProgress(deck.id,card.id).status||'').trim();
-    if(!st) return true;
-    return !!filters[st];
-  });
 }
 function exitStudy() {
   if(state.studyDeck && state.studyIdx < state.studyQueue.length) {
