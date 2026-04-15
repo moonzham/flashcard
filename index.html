@@ -316,6 +316,13 @@ let state = {
   selectedEmoji: '📚', cardInputs: [],
 };
 
+function saveUserToStorage(user) {
+  if (user) localStorage.setItem('fc_user', JSON.stringify(user));
+}
+function loadUserFromStorage() {
+  try { return JSON.parse(localStorage.getItem('fc_user')); } catch { return null; }
+}
+
 // ── 테마 ──
 function applyTheme(t) {
   const pref = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
@@ -343,15 +350,27 @@ window.onload = () => {
 function checkBothReady() {
   if (_gisReady && _gapiReady) tryAutoLogin();
 }
+let _tokenResolve = null, _tokenReject = null;
+
 function initGIS() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
     callback: async (resp) => {
-      if (resp.error) { showToast('로그인 실패'); hideLoading(); return; }
+      if (resp.error) {
+        if (_tokenReject) { _tokenReject(resp); _tokenResolve = null; _tokenReject = null; }
+        else { showToast('로그인 실패'); hideLoading(); }
+        return;
+      }
       state.accessToken = resp.access_token;
       localStorage.setItem('fc_access_token', resp.access_token);
       gapi.client.setToken({ access_token: resp.access_token });
-      await fetchUserInfo(); await loadAllData();
+      if (_tokenResolve) {
+        // 자동 재발급 흐름
+        _tokenResolve(); _tokenResolve = null; _tokenReject = null;
+      } else {
+        // 수동 로그인 흐름
+        await fetchUserInfo(); saveUserToStorage(state.user); await loadAllData();
+      }
     },
   });
   _gisReady = true;
@@ -362,17 +381,25 @@ async function initGapiClient() {
   _gapiReady = true;
   checkBothReady();
 }
+function requestTokenSilently() {
+  return new Promise((resolve, reject) => {
+    _tokenResolve = resolve;
+    _tokenReject = reject;
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
 async function tryAutoLogin() {
-  const saved = localStorage.getItem('fc_access_token');
-  if (!saved) { showLoginScreen(); return; }
-  showLoading('로그인 확인 중...');
+  const savedUser = loadUserFromStorage();
+  if (!savedUser) { showLoginScreen(); return; }
+
+  // 사용자 정보 있으면 → 조용히 토큰 재발급 시도
+  showLoading('로그인 중...');
   try {
-    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${saved}` } });
-    if (!r.ok) throw new Error('Token expired');
-    state.accessToken = saved; state.user = await r.json();
-    gapi.client.setToken({ access_token: saved });
+    await requestTokenSilently();
+    await fetchUserInfo(); saveUserToStorage(state.user);
     await loadAllData();
   } catch {
+    localStorage.removeItem('fc_user');
     localStorage.removeItem('fc_access_token');
     hideLoading();
     showLoginScreen();
@@ -384,6 +411,7 @@ function signIn() { showLoading('Google 로그인 중...'); tokenClient.requestA
 function signOut() {
   if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, () => {});
   localStorage.removeItem('fc_access_token');
+  localStorage.removeItem('fc_user');
   Object.assign(state, { accessToken:null, user:null, decks:[], progress:{}, decksFileId:null, progressFileId:null });
   document.getElementById('tab-bar').style.display = 'none';
   showLoginScreen();
