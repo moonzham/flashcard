@@ -19,6 +19,7 @@
   }
   body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; }
   .screen { display: none; padding: 20px 18px 100px; max-width: 480px; margin: 0 auto; }
+  #screen-study { padding-bottom: 120px; }
   .screen.active { display: block; }
 
   #screen-login { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; max-width: 480px; margin: 0 auto; }
@@ -75,7 +76,7 @@
   .btn-dont  { background: #e53e3e; }
   .btn-maybe { background: #d97706; }
   .btn-know  { background: #16a34a; }
-  .nav-btns { display: flex; gap: 10px; }
+  .nav-btns { display: flex; gap: 10px; position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 12px 18px 28px; background: var(--bg); border-top: 1px solid var(--border); z-index: 99; }
   .nav-btn { flex: 1; padding: 13px; background: #7c6aff; border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
   .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -392,11 +393,13 @@ async function tryAutoLogin() {
   const savedUser = loadUserFromStorage();
   if (!savedUser) { showLoginScreen(); return; }
 
+  // 저장된 사용자 정보를 미리 state에 넣어둬서 물음표 방지
+  state.user = savedUser;
+
   // 사용자 정보 있으면 → 조용히 토큰 재발급 시도
   showLoading('로그인 중...');
   try {
     await requestTokenSilently();
-    await fetchUserInfo(); saveUserToStorage(state.user);
     await loadAllData();
   } catch {
     localStorage.removeItem('fc_user');
