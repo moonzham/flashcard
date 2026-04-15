@@ -846,8 +846,7 @@ function downloadCSV() {
     const esc = s => `"${String(s).replace(/"/g, '""')}"`;
     return [esc(c.front), esc(c.back), esc(c.hint || '')].join(',');
   });
-  const csv = rows.join('
-');
+  const csv = rows.join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
