@@ -302,6 +302,40 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="filter-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">어떤 카드를 공부할까요?</div>
+    <div class="modal-sub" style="margin-bottom:16px">포함할 항목을 선택하세요</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="filter-know" style="width:18px;height:18px;accent-color:var(--accent)">
+        <span style="color:#16a34a;font-weight:700">✅ 알았어요</span>
+        <span id="filter-know-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="filter-maybe" style="width:18px;height:18px;accent-color:var(--accent)">
+        <span style="color:#d97706;font-weight:700">💭 애매해요</span>
+        <span id="filter-maybe-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="filter-dont" style="width:18px;height:18px;accent-color:var(--accent)">
+        <span style="color:#e53e3e;font-weight:700">😅 몰랐어요</span>
+        <span id="filter-dont-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="filter-none" style="width:18px;height:18px;accent-color:var(--accent)">
+        <span style="color:var(--muted);font-weight:700">❓ 미평가</span>
+        <span id="filter-none-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
+      </label>
+    </div>
+    <div id="filter-total-info" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-secondary" onclick="closeFilterModal()">취소</button>
+      <button class="modal-btn modal-btn-primary" onclick="startWithFilter()">공부 시작 →</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="edit-card-modal" style="display:none">
   <div class="modal">
     <div class="modal-title">카드 편집</div>
@@ -320,7 +354,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260415.03';
+const APP_VERSION = 'ver.260415.04';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -606,12 +640,80 @@ function renderStats() {
 // ── 학습 ──
 function tryStartStudy(deckId) {
   const dp=getDeckProgress(deckId);
+  state.pendingDeckId=deckId;
   if(dp.pendingSession) {
-    state.pendingDeckId=deckId;
     const p=dp.pendingSession, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
     document.getElementById('resume-modal-sub').textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
     document.getElementById('resume-modal').style.display='flex';
-  } else { startFresh(deckId); }
+  } else {
+    const deck=state.decks.find(d=>d.id===deckId);
+    const hasHistory=deck&&deck.cards.some(c=>(dp.cards[c.id]||{}).status);
+    if(hasHistory) { openFilterModal(deckId); }
+    else { startFresh(deckId); }
+  }
+}
+function openFilterModal(deckId) {
+  const deck=state.decks.find(d=>d.id===deckId); if(!deck) return;
+  const dp=getDeckProgress(deckId);
+  const counts={know:0,maybe:0,dont:0,none:0};
+  deck.cards.forEach(c=>{
+    const s=(dp.cards[c.id]||{}).status;
+    if(s==='know') counts.know++;
+    else if(s==='maybe') counts.maybe++;
+    else if(s==='dont') counts.dont++;
+    else counts.none++;
+  });
+  document.getElementById('filter-know-count').textContent=counts.know+'장';
+  document.getElementById('filter-maybe-count').textContent=counts.maybe+'장';
+  document.getElementById('filter-dont-count').textContent=counts.dont+'장';
+  document.getElementById('filter-none-count').textContent=counts.none+'장';
+  document.getElementById('filter-know').checked=counts.know>0;
+  document.getElementById('filter-maybe').checked=counts.maybe>0;
+  document.getElementById('filter-dont').checked=counts.dont>0;
+  document.getElementById('filter-none').checked=counts.none>0;
+  updateFilterTotal(deck, dp);
+  ['know','maybe','dont','none'].forEach(k=>{
+    document.getElementById('filter-'+k).onchange=()=>updateFilterTotal(deck,dp);
+  });
+  document.getElementById('filter-modal').style.display='flex';
+}
+function updateFilterTotal(deck, dp) {
+  const selected=getSelectedStatuses();
+  const count=deck.cards.filter(c=>{
+    const s=(dp.cards[c.id]||{}).status||null;
+    return selected.includes(s);
+  }).length;
+  document.getElementById('filter-total-info').textContent='총 '+count+'장 공부';
+}
+function getSelectedStatuses() {
+  const list=[];
+  if(document.getElementById('filter-know').checked) list.push('know');
+  if(document.getElementById('filter-maybe').checked) list.push('maybe');
+  if(document.getElementById('filter-dont').checked) list.push('dont');
+  if(document.getElementById('filter-none').checked) list.push(null);
+  return list;
+}
+function closeFilterModal() {
+  document.getElementById('filter-modal').style.display='none';
+}
+function startWithFilter() {
+  const deckId=state.pendingDeckId;
+  const deck=state.decks.find(d=>d.id===deckId); if(!deck) return;
+  const dp=getDeckProgress(deckId);
+  const selected=getSelectedStatuses();
+  if(!selected.length){ showToast('최소 하나는 선택해주세요'); return; }
+  const filtered=deck.cards.filter(c=>{
+    const s=(dp.cards[c.id]||{}).status||null;
+    return selected.includes(s);
+  });
+  if(!filtered.length){ showToast('해당하는 카드가 없어요'); return; }
+  closeFilterModal();
+  dp.pendingSession=null;
+  state.studyDeck=deck;
+  state.studyQueue=[...filtered].sort(()=>Math.random()-.5);
+  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
+  document.getElementById('study-deck-name').textContent=deck.name;
+  showScreen('study'); renderStudyCard();
 }
 function startFresh(deckId) {
   document.getElementById('resume-modal').style.display='none';
