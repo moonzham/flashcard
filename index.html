@@ -293,10 +293,13 @@
 
 <div class="modal-overlay" id="resume-modal" style="display:none">
   <div class="modal">
-    <div class="modal-title">이어서 공부할까요?</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="modal-title" style="margin-bottom:0">이어서 공부할까요?</div>
+      <button onclick="document.getElementById('resume-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+    </div>
     <div class="modal-sub" id="resume-modal-sub"></div>
     <div class="modal-btns">
-      <button class="modal-btn modal-btn-secondary" onclick="startFresh()">처음부터</button>
+      <button class="modal-btn modal-btn-secondary" onclick="resumeFromFresh()">처음부터</button>
       <button class="modal-btn modal-btn-primary"   onclick="resumeStudy()">이어서 →</button>
     </div>
   </div>
@@ -354,7 +357,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260415.04';
+const APP_VERSION = 'ver.260415.05';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -716,6 +719,7 @@ function startWithFilter() {
   showScreen('study'); renderStudyCard();
 }
 function startFresh(deckId) {
+  // 첫 공부(이력 없음) 경우에만 직접 호출됨
   document.getElementById('resume-modal').style.display='none';
   const id=deckId||state.pendingDeckId;
   const deck=state.decks.find(d=>d.id===id); if(!deck) return;
@@ -724,6 +728,14 @@ function startFresh(deckId) {
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
+}
+function resumeFromFresh() {
+  // 이어하기 모달에서 "처음부터" 선택 → 평가선택 모달로
+  document.getElementById('resume-modal').style.display='none';
+  const deckId=state.pendingDeckId;
+  const dp=getDeckProgress(deckId);
+  dp.pendingSession=null;
+  openFilterModal(deckId);
 }
 function resumeStudy() {
   document.getElementById('resume-modal').style.display='none';
@@ -755,7 +767,7 @@ function renderStudyCard() {
   const card=q[i], cp=getCardProgress(state.studyDeck.id,card.id);
   state.studyFlipped=false; state.studyShowHint=false;
   const done=state.studyResults.know+state.studyResults.maybe+state.studyResults.dont;
-  const total=state.studyDeck.cards.length;
+  const total=state.studyQueue.length;
   document.getElementById('study-progress-text').textContent=`${done+1} / ${total}`;
   document.getElementById('study-progress-fill').style.width=`${(done/total)*100}%`;
   document.getElementById('card-front-face').style.display='flex';
