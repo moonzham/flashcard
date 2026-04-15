@@ -211,10 +211,11 @@
 <div id="screen-study" class="screen">
   <div class="nav">
     <button class="back-btn" onclick="exitStudy()">←</button>
-    <div>
+    <div style="flex:1">
       <div class="nav-title" id="study-deck-name"></div>
       <div class="nav-sub" id="study-progress-text"></div>
     </div>
+    <button class="icon-btn" onclick="openEditCardModal()" style="font-size:11px;padding:4px 8px">✏️ 편집</button>
   </div>
   <div class="study-progress"><div class="study-progress-fill" id="study-progress-fill"></div></div>
   <div class="flashcard" id="flashcard" onclick="flipCard()">
@@ -274,6 +275,7 @@
   <div id="card-inputs"></div>
   <button class="add-card-btn" onclick="addCardInput()">+ 카드 추가</button>
   <button class="primary-btn" onclick="saveDeck()">저장하기</button>
+  <button class="icon-btn" id="csv-download-btn" style="width:100%;padding:12px;margin-bottom:10px;display:none;text-align:center;font-size:13px" onclick="downloadCSV()">⬇️ CSV 다운로드</button>
   <button class="danger-btn" id="delete-deck-btn" style="display:none" onclick="deleteDeck()">🗑 이 덱 삭제</button>
 </div>
 
@@ -300,9 +302,25 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-card-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">카드 편집</div>
+    <label class="form-label" style="margin-top:4px">앞면 (문제)</label>
+    <textarea class="form-input" id="edit-card-front" rows="3" style="resize:vertical;margin-bottom:8px"></textarea>
+    <label class="form-label">뒷면 (정답)</label>
+    <textarea class="form-input" id="edit-card-back" rows="3" style="resize:vertical;margin-bottom:8px"></textarea>
+    <label class="form-label">힌트 (선택)</label>
+    <input class="form-input" id="edit-card-hint" placeholder="힌트 입력" style="margin-bottom:16px">
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-secondary" onclick="closeEditCardModal()">취소</button>
+      <button class="modal-btn modal-btn-primary" onclick="saveEditCard()">저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260415.01';
+const APP_VERSION = 'ver.260415.03';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -697,6 +715,7 @@ function showAddDeck(deckId) {
   state.editingDeckId=deckId||null; state.selectedEmoji='📚'; state.cardInputs=[];
   document.getElementById('adddeck-title').textContent=deckId?'덱 편집':'새 덱 만들기';
   document.getElementById('delete-deck-btn').style.display=deckId?'block':'none';
+  document.getElementById('csv-download-btn').style.display=deckId?'block':'none';
   document.getElementById('csv-text').textContent='파일 선택 (CSV 또는 TXT)';
   document.getElementById('csv-text').style.color='var(--muted)';
   document.getElementById('csv-input').value='';
@@ -786,6 +805,57 @@ function parseCSVLine(line) {
   }
   fields.push(cur.trim()); return fields;
 }
+// ── 카드 편집 모달 ──
+function openEditCardModal() {
+  const card = state.studyQueue[state.studyIdx];
+  if (!card) return;
+  document.getElementById('edit-card-front').value = card.front;
+  document.getElementById('edit-card-back').value = card.back;
+  document.getElementById('edit-card-hint').value = card.hint || '';
+  document.getElementById('edit-card-modal').style.display = 'flex';
+}
+function closeEditCardModal() {
+  document.getElementById('edit-card-modal').style.display = 'none';
+}
+async function saveEditCard() {
+  const card = state.studyQueue[state.studyIdx];
+  if (!card) return;
+  const front = document.getElementById('edit-card-front').value.trim();
+  const back = document.getElementById('edit-card-back').value.trim();
+  const hint = document.getElementById('edit-card-hint').value.trim();
+  if (!front || !back) { showToast('앞면과 뒷면을 입력해주세요'); return; }
+  // state.decks 에서도 업데이트
+  const deck = state.decks.find(d => d.id === state.studyDeck.id);
+  if (deck) {
+    const idx = deck.cards.findIndex(c => c.id === card.id);
+    if (idx !== -1) { deck.cards[idx] = { ...deck.cards[idx], front, back, hint }; }
+  }
+  // studyQueue도 업데이트
+  state.studyQueue[state.studyIdx] = { ...card, front, back, hint };
+  closeEditCardModal();
+  renderStudyCard();
+  showLoading('저장 중...');
+  try { await saveDecks(); showToast('저장 완료!'); } catch(e) { showToast('저장 실패: ' + e.message); } finally { hideLoading(); }
+}
+
+// ── CSV 다운로드 ──
+function downloadCSV() {
+  const deck = state.decks.find(d => d.id === state.editingDeckId);
+  if (!deck) return;
+  const rows = deck.cards.map(c => {
+    const esc = s => `"${String(s).replace(/"/g, '""')}"`;
+    return [esc(c.front), esc(c.back), esc(c.hint || '')].join(',');
+  });
+  const csv = rows.join('
+');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${deck.name}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
