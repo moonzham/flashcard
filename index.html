@@ -164,6 +164,7 @@
     </div>
     <div class="header-btns">
       <span id="sync-indicator" style="display:none;font-size:12px;color:#16a34a">✓ 동기화됨</span>
+      <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px" id="version-label"></span>
       <button class="icon-btn" onclick="showSettings()">⚙️</button>
       <button class="icon-btn" onclick="signOut()">로그아웃</button>
     </div>
@@ -301,12 +302,8 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.appdata',
-  'openid',
-  'email',
-  'profile'
-].join(' ');
+const APP_VERSION = 'ver.260415.01';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
@@ -350,6 +347,7 @@ let _autoLoginPending = false;
 
 window.onload = () => {
   loadTheme();
+  document.getElementById('version-label').textContent = APP_VERSION;
   const s1 = document.createElement('script'); s1.src = 'https://accounts.google.com/gsi/client'; s1.onload = initGIS; document.head.appendChild(s1);
   const s2 = document.createElement('script'); s2.src = 'https://apis.google.com/js/api.js'; s2.onload = () => gapi.load('client', initGapiClient); document.head.appendChild(s2);
 };
@@ -359,6 +357,20 @@ function checkBothReady() {
 let _tokenResolve = null, _tokenReject = null;
 
 function initGIS() {
+  // google.accounts.id: 사용자 신원 확인용 (id_token)
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: (credResp) => {
+      // id_token JWT 파싱해서 사용자 정보 추출 (API 호출 불필요)
+      const payload = JSON.parse(atob(credResp.credential.split('.')[1]));
+      state.user = { name: payload.name, email: payload.email, picture: payload.picture };
+      saveUserToStorage(state.user);
+      // 사용자 정보 확보 후 Drive 토큰 요청
+      tokenClient.requestAccessToken({ prompt: '' });
+    },
+  });
+
+  // tokenClient: Drive 접근용 토큰만
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
     callback: async (resp) => {
@@ -371,11 +383,9 @@ function initGIS() {
       localStorage.setItem('fc_access_token', resp.access_token);
       gapi.client.setToken({ access_token: resp.access_token });
       if (_tokenResolve) {
-        // 자동 재발급 흐름
         _tokenResolve(); _tokenResolve = null; _tokenReject = null;
       } else {
-        // 수동 로그인 흐름
-        await fetchUserInfo(); saveUserToStorage(state.user); await loadAllData();
+        await loadAllData();
       }
     },
   });
@@ -415,7 +425,7 @@ async function tryAutoLogin() {
 }
 
 // ── 인증 ──
-function signIn() { showLoading('Google 로그인 중...'); tokenClient.requestAccessToken({ prompt: '' }); }
+function signIn() { showLoading('Google 로그인 중...'); google.accounts.id.prompt(); }
 function signOut() {
   if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, () => {});
   localStorage.removeItem('fc_access_token');
@@ -424,18 +434,6 @@ function signOut() {
   document.getElementById('tab-bar').style.display = 'none';
   showLoginScreen();
 }
-async function fetchUserInfo() {
-  const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${state.accessToken}` }
-  });
-
-  if (!r.ok) {
-    throw new Error(`userinfo 실패: ${r.status}`);
-  }
-
-  state.user = await r.json();
-}
-
 // ── Drive API ──
 async function driveList() { const r = await gapi.client.drive.files.list({ spaces:'appDataFolder', fields:'files(id,name)', pageSize:10 }); return r.result.files||[]; }
 async function driveRead(id) { const r = await gapi.client.drive.files.get({ fileId:id, alt:'media' }); return r.result; }
