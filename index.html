@@ -332,11 +332,17 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 // ── GIS 초기화 ──
 let tokenClient;
+let _gisReady = false, _gapiReady = false;
+let _autoLoginPending = false;
+
 window.onload = () => {
   loadTheme();
   const s1 = document.createElement('script'); s1.src = 'https://accounts.google.com/gsi/client'; s1.onload = initGIS; document.head.appendChild(s1);
   const s2 = document.createElement('script'); s2.src = 'https://apis.google.com/js/api.js'; s2.onload = () => gapi.load('client', initGapiClient); document.head.appendChild(s2);
 };
+function checkBothReady() {
+  if (_gisReady && _gapiReady) tryAutoLogin();
+}
 function initGIS() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
@@ -348,10 +354,13 @@ function initGIS() {
       await fetchUserInfo(); await loadAllData();
     },
   });
-  tryAutoLogin();
+  _gisReady = true;
+  checkBothReady();
 }
 async function initGapiClient() {
   await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
+  _gapiReady = true;
+  checkBothReady();
 }
 async function tryAutoLogin() {
   const saved = localStorage.getItem('fc_access_token');
@@ -359,11 +368,15 @@ async function tryAutoLogin() {
   showLoading('로그인 확인 중...');
   try {
     const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${saved}` } });
-    if (!r.ok) throw new Error();
+    if (!r.ok) throw new Error('Token expired');
     state.accessToken = saved; state.user = await r.json();
     gapi.client.setToken({ access_token: saved });
     await loadAllData();
-  } catch { localStorage.removeItem('fc_access_token'); hideLoading(); showLoginScreen(); }
+  } catch {
+    localStorage.removeItem('fc_access_token');
+    hideLoading();
+    showLoginScreen();
+  }
 }
 
 // ── 인증 ──
