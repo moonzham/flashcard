@@ -225,7 +225,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.01';
+const APP_VERSION = 'ver.260416.02';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -680,6 +680,14 @@ function answer(type) {
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
   getCardProgress(state.studyDeck.id,card.id).status=type;
   state.studyResults[type]++; state.studyIdx++;
+  const dp=getDeckProgress(state.studyDeck.id);
+  const today=new Date().toISOString().split('T')[0];
+  if(state.studyIdx < state.studyQueue.length) {
+    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
+  } else {
+    dp.pendingSession=null;
+  }
+  dp.lastStudied=today;
   saveProgress(); renderStudyCard();
 }
 function showDone() {
