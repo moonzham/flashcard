@@ -225,7 +225,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.02';
+const APP_VERSION = 'ver.260416.03';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -621,9 +621,6 @@ function exitStudy() {
     const today=new Date().toISOString().split('T')[0];
     dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
     dp.lastStudied=today;
-    if(!dp.sessions) dp.sessions=[];
-    dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:false});
-    if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
     saveProgress();
   }
   showHome();
