@@ -228,7 +228,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.05';
+const APP_VERSION = 'ver.260416.06';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -452,7 +452,19 @@ function showScreen(id) {
   const map={home:'tab-home',starred:'tab-starred',stats:'tab-stats'};
   if(map[id]) document.getElementById(map[id]).classList.add('active');
   document.getElementById('tab-bar').style.display=['home','starred','stats'].includes(id)?'flex':'none';
+  history.pushState({ screen: id }, '', '');
 }
+window.addEventListener('popstate', (e) => {
+  const id = e.state?.screen;
+  if (!id) { showHome(); return; }
+  if (id === 'study') { exitStudy(); return; }
+  if (id === 'settings') { showHome(); return; }
+  if (id === 'adddeck') { showHome(); return; }
+  if (id === 'home') { showHome(); return; }
+  if (id === 'starred') { showStarred(); return; }
+  if (id === 'stats') { showStats(); return; }
+  showHome();
+});
 function renderUserHeader() {
   const wrap=document.getElementById('user-avatar-wrap'), nameEl=document.getElementById('user-name-text');
   if(!state.user) return;
