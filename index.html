@@ -327,6 +327,14 @@ function requestTokenSilently() {
     tokenClient.requestAccessToken({ prompt: '' });
   });
 }
+async function isDriveTokenValid() {
+  try {
+    await driveList();
+    return true;
+  } catch {
+    return false;
+  }
+}
 async function tryAutoLogin() {
   const savedUser = loadUserFromStorage();
   if (!savedUser) { showLoginScreen(); return; }
@@ -334,8 +342,22 @@ async function tryAutoLogin() {
   // 저장된 사용자 정보를 미리 state에 넣어둬서 물음표 방지
   state.user = savedUser;
 
-  // 사용자 정보 있으면 → 조용히 토큰 재발급 시도
+  // 1) 저장된 토큰이 있으면 먼저 복구 시도
   showLoading('로그인 중...');
+  const savedToken = localStorage.getItem('fc_access_token');
+  if (savedToken) {
+    state.accessToken = savedToken;
+    gapi.client.setToken({ access_token: savedToken });
+    if (await isDriveTokenValid()) {
+      await loadAllData();
+      return;
+    }
+    localStorage.removeItem('fc_access_token');
+    state.accessToken = null;
+    gapi.client.setToken(null);
+  }
+
+  // 2) 저장 토큰이 없거나 만료되면 → 조용히 토큰 재발급 시도
   try {
     await requestTokenSilently();
     await loadAllData();
