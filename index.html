@@ -24,11 +24,13 @@
   <div class="user-header">
     <div class="user-info">
       <div id="user-avatar-wrap"></div>
-      <div class="user-name" id="user-name-text"></div>
+      <div>
+        <div class="user-name" id="user-name-text"></div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-top:2px" id="version-label"></div>
+      </div>
     </div>
     <div class="header-btns">
       <span id="sync-indicator" style="display:none;font-size:12px;color:#16a34a">✓ 동기화됨</span>
-      <span style="font-size:10px;color:var(--muted);letter-spacing:0.5px" id="version-label"></span>
       <button class="icon-btn" onclick="showSettings()">⚙️</button>
       <button class="icon-btn" onclick="signOut()">로그아웃</button>
     </div>
@@ -36,6 +38,7 @@
   <div class="home-label">암기 카드</div>
   <div class="home-title">내 덱 목록</div>
   <div id="deck-list"></div>
+  <button class="add-deck-btn" id="study-starred-btn" onclick="startStarredStudy()" style="margin-bottom:8px">⭐ 별표 카드 모아 풀기</button>
   <button class="add-deck-btn" onclick="showAddDeck()">+ 새 덱 만들기</button>
 </div>
 
@@ -225,7 +228,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.03';
+const APP_VERSION = 'ver.260416.04';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -499,12 +502,37 @@ function renderStarred() {
     if(!starred.length) return; found=true;
     const h=document.createElement('div'); h.className='section-title'; h.textContent=deck.emoji+' '+deck.name; list.appendChild(h);
     starred.forEach(card=>{
-      const div=document.createElement('div'); div.className='starred-card';
+      const div=document.createElement('div'); div.className='starred-card'; div.style.cursor='pointer';
       div.innerHTML=`<span style="font-size:18px">⭐</span><div><div style="font-weight:700;font-size:14px">${card.front}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">${card.back}</div></div>`;
+      div.onclick=()=>startStarredStudyFrom(deck, card);
       list.appendChild(div);
     });
   });
   if(!found) list.innerHTML='<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">별표 카드가 없어요</div>';
+}
+function startStarredStudy() {
+  const allStarred=[];
+  state.decks.forEach(deck=>{
+    const dp=getDeckProgress(deck.id);
+    deck.cards.filter(c=>(dp.cards[c.id]||{}).starred).forEach(c=>allStarred.push({...c, _deckId:deck.id}));
+  });
+  if(!allStarred.length){ showToast('별표 카드가 없어요'); return; }
+  _launchStarredSession(allStarred, 0);
+}
+function startStarredStudyFrom(deck, startCard) {
+  const dp=getDeckProgress(deck.id);
+  const starred=deck.cards.filter(c=>(dp.cards[c.id]||{}).starred).map(c=>({...c, _deckId:deck.id}));
+  const idx=starred.findIndex(c=>c.id===startCard.id);
+  _launchStarredSession(starred, idx<0?0:idx);
+}
+function _launchStarredSession(cards, startIdx) {
+  state.studyDeck={ id:'__starred__', name:'별표 카드' };
+  state.studyQueue=cards;
+  state.studyIdx=startIdx;
+  state.studyResults={know:0,maybe:0,dont:0};
+  state._starredMode=true;
+  document.getElementById('study-deck-name').textContent='⭐ 별표 카드';
+  showScreen('study'); renderStudyCard();
 }
 
 function renderStats() {
@@ -638,20 +666,23 @@ function resumeStudy() {
   showScreen('study'); renderStudyCard();
 }
 function exitStudy() {
-  if(state.studyDeck && state.studyIdx < state.studyQueue.length) {
+  if(!state._starredMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
     const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
     dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
     dp.lastStudied=today;
     saveProgress();
   }
+  state._starredMode=false;
   showHome();
 }
 
 function renderStudyCard() {
   const q=state.studyQueue, i=state.studyIdx;
   if(i>=q.length){ showDone(); return; }
-  const card=q[i], cp=getCardProgress(state.studyDeck.id,card.id);
+  const card=q[i];
+  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
+  const cp=getCardProgress(deckId, card.id);
   state.studyFlipped=false; state.studyShowHint=false;
   const done=state.studyResults.know+state.studyResults.maybe+state.studyResults.dont;
   const total=state.studyQueue.length;
@@ -691,32 +722,41 @@ function toggleHint() {
 function toggleStar(e) {
   e.stopPropagation();
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
-  const cp=getCardProgress(state.studyDeck.id,card.id); cp.starred=!cp.starred;
+  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
+  const cp=getCardProgress(deckId,card.id); cp.starred=!cp.starred;
   document.getElementById('star-btn').classList.toggle('starred',cp.starred);
   saveProgress();
 }
 function answer(type) {
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
-  getCardProgress(state.studyDeck.id,card.id).status=type;
+  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
+  getCardProgress(deckId,card.id).status=type;
   state.studyResults[type]++; state.studyIdx++;
-  const dp=getDeckProgress(state.studyDeck.id);
-  const today=new Date().toISOString().split('T')[0];
-  if(state.studyIdx < state.studyQueue.length) {
-    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
-  } else {
-    dp.pendingSession=null;
+  if(!state._starredMode) {
+    const dp=getDeckProgress(state.studyDeck.id);
+    const today=new Date().toISOString().split('T')[0];
+    if(state.studyIdx < state.studyQueue.length) {
+      dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
+    } else {
+      dp.pendingSession=null;
+    }
+    dp.lastStudied=today;
   }
-  dp.lastStudied=today;
   saveProgress(); renderStudyCard();
 }
 function showDone() {
-  const dp=getDeckProgress(state.studyDeck.id);
-  const today=new Date().toISOString().split('T')[0];
-  dp.lastStudied=today; dp.totalSessions=(dp.totalSessions||0)+1; dp.pendingSession=null;
-  if(!dp.sessions) dp.sessions=[];
-  dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:true});
-  if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
-  saveProgress();
+  if(!state._starredMode) {
+    const dp=getDeckProgress(state.studyDeck.id);
+    const today=new Date().toISOString().split('T')[0];
+    dp.lastStudied=today; dp.totalSessions=(dp.totalSessions||0)+1; dp.pendingSession=null;
+    if(!dp.sessions) dp.sessions=[];
+    dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:true});
+    if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
+    saveProgress();
+  } else {
+    saveProgress();
+  }
+  state._starredMode=false;
   showScreen('done');
   document.getElementById('done-sub').textContent=state.studyDeck.name+' 전체를 다 봤어요';
   document.getElementById('res-know').textContent=state.studyResults.know;
@@ -767,6 +807,10 @@ function addCardInput(){ state.cardInputs.push({id:'card_'+Date.now()+Math.rando
 function removeCardInput(i){ state.cardInputs.splice(i,1); renderCardInputs(); }
 function handleCSV(e) {
   const file=e.target.files[0]; if(!file) return;
+  const nameInput=document.getElementById('deck-name-input');
+  if(!nameInput.value.trim()) {
+    nameInput.value=file.name.replace(/\.[^/.]+$/, '');
+  }
   const reader=new FileReader();
   reader.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
