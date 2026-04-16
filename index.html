@@ -228,7 +228,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.04';
+const APP_VERSION = 'ver.260416.05';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -631,7 +631,8 @@ function startWithFilter() {
   closeFilterModal();
   dp.pendingSession=null;
   state.studyDeck=deck;
-  state.studyQueue=[...filtered].sort(()=>Math.random()-.5);
+  const cards=[...filtered];
+  state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
@@ -641,8 +642,10 @@ function startFresh(deckId) {
   document.getElementById('resume-modal').style.display='none';
   const id=deckId||state.pendingDeckId;
   const deck=state.decks.find(d=>d.id===id); if(!deck) return;
-  getDeckProgress(id).pendingSession=null;
-  state.studyDeck=deck; state.studyQueue=[...deck.cards].sort(()=>Math.random()-.5);
+  const dp=getDeckProgress(id);
+  dp.pendingSession=null;
+  const cards=[...deck.cards];
+  state.studyDeck=deck; state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
