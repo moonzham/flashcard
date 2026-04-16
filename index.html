@@ -83,6 +83,10 @@
   </div>
   <div class="study-progress"><div class="study-progress-fill" id="study-progress-fill"></div></div>
   <div class="flashcard" id="flashcard" onclick="flipCard()">
+    <div class="card-status status-none" id="card-status">
+      <div class="card-status-dot"></div>
+      <div class="card-status-label">미평가</div>
+    </div>
     <button class="star-btn" id="star-btn" onclick="toggleStar(event)">⭐</button>
     <div class="card-face" id="card-front-face">
       <div class="card-label">문제</div>
@@ -221,7 +225,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260415.05';
+const APP_VERSION = 'ver.260416.01';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -640,6 +644,11 @@ function renderStudyCard() {
   const bt=document.getElementById('card-back-text'); bt.textContent=card.back; setFontSize(bt,card.back);
   document.getElementById('card-hint-back').textContent=card.hint?'💡 '+card.hint:'';
   document.getElementById('star-btn').classList.toggle('starred',!!cp.starred);
+  const statusEl = document.getElementById('card-status');
+  const statusMap = { know: ['status-know','알았어요'], maybe: ['status-maybe','애매해요'], dont: ['status-dont','몰랐어요'] };
+  const [cls, label] = statusMap[cp.status] || ['status-none','미평가'];
+  statusEl.className = 'card-status ' + cls;
+  statusEl.querySelector('.card-status-label').textContent = label;
   const hb=document.getElementById('hint-btn');
   if(card.hint){ hb.style.display='block'; hb.textContent='💡 힌트 보기'; } else { hb.style.display='none'; }
   document.getElementById('answer-btns').style.display='none';
