@@ -232,7 +232,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260417.01';
+const APP_VERSION = 'ver.260417.02';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -918,8 +918,9 @@ async function saveEditCard() {
   const back = document.getElementById('edit-card-back').value.trim();
   const hint = document.getElementById('edit-card-hint').value.trim();
   if (!front || !back) { showToast('앞면과 뒷면을 입력해주세요'); return; }
-  // state.decks 에서도 업데이트
-  const deck = state.decks.find(d => d.id === state.studyDeck.id);
+  // state.decks 에서도 업데이트 (별표모드면 card._deckId로 실제 덱 찾기)
+  const deckId = state._starredMode ? card._deckId : state.studyDeck.id;
+  const deck = state.decks.find(d => d.id === deckId);
   if (deck) {
     const idx = deck.cards.findIndex(c => c.id === card.id);
     if (idx !== -1) { deck.cards[idx] = { ...deck.cards[idx], front, back, hint }; }
