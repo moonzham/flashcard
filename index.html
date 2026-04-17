@@ -232,7 +232,7 @@
 
 <script>
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260416.06';
+const APP_VERSION = 'ver.260417.01';
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DECKS_FILE = 'flashcard_decks.json';
 const PROGRESS_FILE = 'flashcard_progress.json';
@@ -246,6 +246,7 @@ let state = {
   studyDeck: null, studyQueue: [], studyIdx: 0,
   studyFlipped: false, studyShowHint: false,
   studyResults: {know:0,maybe:0,dont:0},
+  sessionAnswers: {},
   selectedEmoji: '📚', cardInputs: [],
 };
 
@@ -498,7 +499,7 @@ function renderHome() {
     div.innerHTML=`<span class="deck-emoji">${deck.emoji}</span>
       <div class="deck-info">
         <div class="deck-name">${deck.name}${dp.pendingSession?'<span class="resume-badge">이어하기</span>':''}</div>
-        <div class="deck-meta">${total}개 카드 · ${learned}/${total} 완료 · ${last}</div>
+        <div class="deck-meta">${total}개 카드 · ${learned}/${total} 완료<br><span style="color:var(--muted);font-size:11px">${last}</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
@@ -661,7 +662,7 @@ function startWithFilter() {
   state.studyDeck=deck;
   const cards=[...filtered];
   state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
-  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
+  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0}; state.sessionAnswers={};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
 }
@@ -674,7 +675,7 @@ function startFresh(deckId) {
   dp.pendingSession=null;
   const cards=[...deck.cards];
   state.studyDeck=deck; state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
-  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0};
+  state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0}; state.sessionAnswers={};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
 }
@@ -692,7 +693,7 @@ function resumeStudy() {
   const p=getDeckProgress(state.pendingDeckId).pendingSession;
   state.studyDeck=deck;
   state.studyQueue=p.remainingIds.map(id=>deck.cards.find(c=>c.id===id)).filter(Boolean);
-  state.studyIdx=0; state.studyResults={...p.results};
+  state.studyIdx=0; state.studyResults={...p.results}; state.sessionAnswers={...p.sessionAnswers||{}};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
 }
@@ -700,7 +701,7 @@ function exitStudy() {
   if(!state._starredMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
     const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
-    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
+    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
     dp.lastStudied=today;
     saveProgress();
   }
@@ -762,12 +763,16 @@ function answer(type) {
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
   const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
   getCardProgress(deckId,card.id).status=type;
+  // 이번 세션에서 이미 답변한 카드면 기존 카운트 차감
+  const prev=state.sessionAnswers[card.id];
+  if(prev) state.studyResults[prev]=Math.max(0, state.studyResults[prev]-1);
+  state.sessionAnswers[card.id]=type;
   state.studyResults[type]++; state.studyIdx++;
   if(!state._starredMode) {
     const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
     if(state.studyIdx < state.studyQueue.length) {
-      dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults} };
+      dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
     } else {
       dp.pendingSession=null;
     }
