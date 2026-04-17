@@ -147,3 +147,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', s
 .modal-btn { flex: 1; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; }
 .modal-btn-secondary { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 .modal-btn-primary { background: var(--accent); color: var(--bg); }
+
+/* 필터 모달 커스텀 체크박스 */
+.filter-option { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); transition: border-color .15s, background .15s; user-select: none; }
+.filter-option.checked { border-color: var(--accent); background: var(--accent-subtle); }
+.filter-option input[type="checkbox"] { display: none; }
+.filter-check-box { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color .15s, background .15s; }
+.filter-option.checked .filter-check-box { border-color: var(--accent); background: var(--accent); }
+.filter-check-icon { display: none; font-size: 12px; color: var(--bg); font-weight: 900; line-height: 1; }
+.filter-option.checked .filter-check-icon { display: block; }

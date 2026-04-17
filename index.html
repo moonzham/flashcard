@@ -180,27 +180,31 @@
   <div class="modal">
     <div class="modal-title">어떤 카드를 공부할까요?</div>
     <div class="modal-sub" style="margin-bottom:16px">포함할 항목을 선택하세요</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
-        <input type="checkbox" id="filter-know" style="width:18px;height:18px;accent-color:var(--text)">
-        <span style="color:#16a34a;font-weight:700">✅ 알았어요</span>
-        <span id="filter-know-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
-        <input type="checkbox" id="filter-maybe" style="width:18px;height:18px;accent-color:var(--text)">
-        <span style="color:#d97706;font-weight:700">💭 애매해요</span>
-        <span id="filter-maybe-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
-        <input type="checkbox" id="filter-dont" style="width:18px;height:18px;accent-color:var(--text)">
-        <span style="color:#e53e3e;font-weight:700">😅 몰랐어요</span>
-        <span id="filter-dont-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
-        <input type="checkbox" id="filter-none" style="width:18px;height:18px;accent-color:var(--text)">
-        <span style="color:var(--muted);font-weight:700">❓ 미평가</span>
-        <span id="filter-none-count" style="color:var(--muted);font-size:12px;margin-left:auto"></span>
-      </label>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div class="filter-option" id="filter-opt-know" onclick="toggleFilterOpt('know')">
+        <input type="checkbox" id="filter-know">
+        <div class="filter-check-box"><span class="filter-check-icon">✓</span></div>
+        <span style="color:#16a34a;font-weight:700;flex:1">✅ 알았어요</span>
+        <span id="filter-know-count" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div class="filter-option" id="filter-opt-maybe" onclick="toggleFilterOpt('maybe')">
+        <input type="checkbox" id="filter-maybe">
+        <div class="filter-check-box"><span class="filter-check-icon">✓</span></div>
+        <span style="color:#d97706;font-weight:700;flex:1">💭 애매해요</span>
+        <span id="filter-maybe-count" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div class="filter-option" id="filter-opt-dont" onclick="toggleFilterOpt('dont')">
+        <input type="checkbox" id="filter-dont">
+        <div class="filter-check-box"><span class="filter-check-icon">✓</span></div>
+        <span style="color:#e53e3e;font-weight:700;flex:1">😅 몰랐어요</span>
+        <span id="filter-dont-count" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div class="filter-option" id="filter-opt-none" onclick="toggleFilterOpt('none')">
+        <input type="checkbox" id="filter-none">
+        <div class="filter-check-box"><span class="filter-check-icon">✓</span></div>
+        <span style="color:var(--muted);font-weight:700;flex:1">❓ 미평가</span>
+        <span id="filter-none-count" style="color:var(--muted);font-size:12px"></span>
+      </div>
     </div>
     <div id="filter-total-info" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px"></div>
     <div class="modal-btns">
@@ -585,9 +589,21 @@ function tryStartStudy(deckId) {
     else { startFresh(deckId); }
   }
 }
+function toggleFilterOpt(key) {
+  const cb = document.getElementById('filter-' + key);
+  cb.checked = !cb.checked;
+  document.getElementById('filter-opt-' + key).classList.toggle('checked', cb.checked);
+  updateFilterTotal(_currentFilterDeck, _currentFilterDp);
+}
+function _setFilterCheck(key, val) {
+  document.getElementById('filter-' + key).checked = val;
+  document.getElementById('filter-opt-' + key).classList.toggle('checked', val);
+}
+let _currentFilterDeck = null, _currentFilterDp = null;
 function openFilterModal(deckId) {
   const deck=state.decks.find(d=>d.id===deckId); if(!deck) return;
   const dp=getDeckProgress(deckId);
+  _currentFilterDeck = deck; _currentFilterDp = dp;
   const counts={know:0,maybe:0,dont:0,none:0};
   deck.cards.forEach(c=>{
     const s=(dp.cards[c.id]||{}).status;
@@ -600,20 +616,20 @@ function openFilterModal(deckId) {
   document.getElementById('filter-maybe-count').textContent=counts.maybe+'장';
   document.getElementById('filter-dont-count').textContent=counts.dont+'장';
   document.getElementById('filter-none-count').textContent=counts.none+'장';
-  document.getElementById('filter-know').checked=counts.know>0;
-  document.getElementById('filter-maybe').checked=counts.maybe>0;
-  document.getElementById('filter-dont').checked=counts.dont>0;
-  document.getElementById('filter-none').checked=counts.none>0;
+  _setFilterCheck('know', counts.know>0);
+  _setFilterCheck('maybe', counts.maybe>0);
+  _setFilterCheck('dont', counts.dont>0);
+  _setFilterCheck('none', counts.none>0);
   updateFilterTotal(deck, dp);
-  ['know','maybe','dont','none'].forEach(k=>{
-    document.getElementById('filter-'+k).onchange=()=>updateFilterTotal(deck,dp);
-  });
   document.getElementById('filter-modal').style.display='flex';
 }
 function updateFilterTotal(deck, dp) {
+  const d = deck || _currentFilterDeck;
+  const p = dp || _currentFilterDp;
+  if (!d || !p) return;
   const selected=getSelectedStatuses();
-  const count=deck.cards.filter(c=>{
-    const s=(dp.cards[c.id]||{}).status||null;
+  const count=d.cards.filter(c=>{
+    const s=(p.cards[c.id]||{}).status||null;
     return selected.includes(s);
   }).length;
   document.getElementById('filter-total-info').textContent='총 '+count+'장 공부';
