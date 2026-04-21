@@ -238,7 +238,7 @@
 // 상수
 // ════════════════════════════════════════════════
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260421.02';
+const APP_VERSION = 'ver.260421.03';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
 
 // ── Supabase 연결 정보 ──
@@ -422,11 +422,13 @@ function signOut() {
 // 데이터 로드 / 저장 (Supabase)
 // ════════════════════════════════════════════════
 // 로드 순서: decks → cards (deck에 attach) → card_progress (인메모리 캐시)
+// 앱 시작 시 덱 목록 + card_progress만 로드
+// 카드 내용은 덱 클릭 시 loadDeckCards()로 lazy load
 async function loadAllData() {
   try {
     const uid = state.user.sub;
 
-    // 덱 목록 로드
+    // 덱 목록 로드 (카드 내용 제외)
     const decks = await sbSelect('decks', `user_id=eq.${uid}&order=created_at.asc`);
 
     if (!decks || decks.length === 0) {
@@ -434,21 +436,10 @@ async function loadAllData() {
       state.decks = [];
       await createSampleDeck();
     } else {
-      // 각 덱의 카드 로드 (deck_id 목록으로 한 번에)
-      const deckIds = decks.map(d => d.deck_id).join(',');
-      const cards = await sbSelect('cards', `deck_id=in.(${deckIds})&order=sort_order.asc`);
+      // 덱 목록만 state에 저장 (cards는 빈 배열로 초기화)
+      state.decks = decks.map(d => ({ ...d, id: d.deck_id, cards: [] }));
 
-      // 카드를 덱에 attach
-      state.decks = decks.map(d => ({
-        ...d,
-        id: d.deck_id, // 기존 코드 호환용 (id 필드도 유지)
-        cards: (cards || []).filter(c => c.deck_id === d.deck_id).map(c => ({
-          ...c,
-          id: c.card_id, // 기존 코드 호환용
-        }))
-      }));
-
-      // card_progress 인메모리 캐시 로드
+      // card_progress 인메모리 캐시 로드 (별표/상태 표시에 필요)
       const progress = await sbSelect('card_progress', `user_id=eq.${uid}`);
       state.cardProgress = {};
       (progress || []).forEach(p => {
@@ -468,6 +459,16 @@ async function loadAllData() {
   }
 }
 
+// 특정 덱의 카드를 DB에서 로드 (lazy load)
+async function loadDeckCards(deckId) {
+  const cards = await sbSelect('cards', `deck_id=eq.${deckId}&order=sort_order.asc`);
+  const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
+  if (deck) {
+    deck.cards = (cards || []).map(c => ({ ...c, id: c.card_id }));
+  }
+  return deck ? deck.cards : [];
+}
+
 // 샘플 덱 생성 (첫 로그인 시)
 async function createSampleDeck() {
   const uid = state.user.sub;
@@ -479,6 +480,7 @@ async function createSampleDeck() {
   const [newDeck] = await sbInsert('decks', { user_id: uid, name: '샘플 덱', emoji: '📚' });
   const cardRows = sampleCards.map((c, i) => ({ deck_id: newDeck.deck_id, ...c, sort_order: i }));
   const newCards = await sbInsert('cards', cardRows);
+  // 샘플 덱은 바로 카드도 attach (첫 로그인이므로)
   state.decks = [{ ...newDeck, id: newDeck.deck_id, cards: (newCards || []).map(c => ({ ...c, id: c.card_id })) }];
 }
 
@@ -678,9 +680,18 @@ async function renderStats() {
 //                 → (학습 이력 있으면) 필터 모달 → startWithFilter
 //                 → (첫 학습) startFresh
 // 첫 세션은 순서대로, 2회차부터 랜덤 셔플 (totalSessions 기준)
-function tryStartStudy(deckId) {
+// 덱 클릭 시 카드 lazy load 후 학습 시작
+async function tryStartStudy(deckId) {
   const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId);
   state.pendingDeckId=deckId;
+
+  // 카드가 아직 로드 안 됐으면 지금 로드
+  if(!deck.cards || deck.cards.length === 0) {
+    showLoading('카드 불러오는 중...');
+    try { await loadDeckCards(deckId); } catch(e) { showToast('카드 로드 실패'); hideLoading(); return; }
+    hideLoading();
+  }
+
   if(deck && deck.pending_session) {
     const p=deck.pending_session, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
     document.getElementById('resume-modal-sub').textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
@@ -942,7 +953,17 @@ function showAddDeck(deckId) {
     document.getElementById('deck-name-input').value=deck.name;
     state.selectedEmoji=deck.emoji;
     document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent===deck.emoji));
-    state.cardInputs=deck.cards.map(c=>({...c, id:c.card_id||c.id}));
+    // 카드가 아직 로드 안 됐으면 lazy load
+    if(!deck.cards || deck.cards.length === 0) {
+      showLoading('카드 불러오는 중...');
+      loadDeckCards(deckId).then(() => {
+        state.cardInputs=deck.cards.map(c=>({...c, id:c.card_id||c.id}));
+        renderCardInputs();
+        hideLoading();
+      }).catch(() => { showToast('카드 로드 실패'); hideLoading(); });
+    } else {
+      state.cardInputs=deck.cards.map(c=>({...c, id:c.card_id||c.id}));
+    }
   } else {
     document.getElementById('deck-name-input').value='';
     state.cardInputs=[{id:'card_'+Date.now(),front:'',back:'',hint:''}];
