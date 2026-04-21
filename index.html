@@ -97,6 +97,9 @@
       <div class="card-tap">탭해서 정답 보기</div>
     </div>
     <div class="card-face" id="card-back-face" style="display:none">
+      <div class="card-label">문제</div>
+      <div class="card-text" id="card-back-question" style="opacity:0.45;margin-bottom:18px"></div>
+      <div style="width:100%;height:1px;background:var(--card-border);margin-bottom:18px"></div>
       <div class="card-label">정답</div>
       <div class="card-text" id="card-back-text"></div>
       <div class="card-hint-text" id="card-hint-back"></div>
@@ -231,25 +234,54 @@
 </div>
 
 <script>
+// ════════════════════════════════════════════════
+// 상수
+// ════════════════════════════════════════════════
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260417.02';
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
-const DECKS_FILE = 'flashcard_decks.json';
-const PROGRESS_FILE = 'flashcard_progress.json';
+const APP_VERSION = 'ver.260421.01';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata'; // Drive appDataFolder 접근 권한
+const DECKS_FILE = 'flashcard_decks.json';     // Drive에 저장되는 덱/카드 데이터 파일명
+const PROGRESS_FILE = 'flashcard_progress.json'; // Drive에 저장되는 학습 진행 데이터 파일명
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
 
+// ════════════════════════════════════════════════
+// 전역 상태 (앱 런타임 상태 전체를 여기서 관리)
+// ════════════════════════════════════════════════
 let state = {
-  accessToken: null, user: null,
-  decksFileId: null, progressFileId: null,
-  decks: [], progress: {},
-  editingDeckId: null, pendingDeckId: null,
-  studyDeck: null, studyQueue: [], studyIdx: 0,
-  studyFlipped: false, studyShowHint: false,
-  studyResults: {know:0,maybe:0,dont:0},
-  sessionAnswers: {},
-  selectedEmoji: '📚', cardInputs: [],
+  // ── 인증 ──
+  accessToken: null,  // Google Drive API 접근 토큰 (페이지 새로고침 시 초기화됨)
+  user: null,         // { name, email, picture } — GIS id_token JWT에서 파싱
+
+  // ── Drive 파일 ID (upsert 시 create/update 판단에 사용) ──
+  decksFileId: null,
+  progressFileId: null,
+
+  // ── 데이터 ──
+  decks: [],     // [{ id, name, emoji, cards: [{id, front, back, hint}] }]
+  progress: {},  // { [deckId]: { lastStudied, totalSessions, cards, sessions, pendingSession } }
+
+  // ── 덱 편집 ──
+  editingDeckId: null,  // 현재 편집 중인 덱 ID (null이면 신규 생성)
+  pendingDeckId: null,  // 학습 시작 대기 중인 덱 ID (필터/이어하기 모달에서 사용)
+
+  // ── 학습 세션 ──
+  studyDeck: null,      // 현재 학습 중인 덱 객체
+  studyQueue: [],       // 이번 세션에서 풀 카드 배열 (필터/이어하기 적용 후)
+  studyIdx: 0,          // studyQueue에서 현재 카드 인덱스
+  studyFlipped: false,  // 카드가 뒤집혀 있는지 (문제→정답)
+  studyShowHint: false, // 힌트가 펼쳐져 있는지
+
+  // ── 세션 결과 집계 ──
+  studyResults: {know:0, maybe:0, dont:0}, // 이번 세션 누적 평가 카운트
+  sessionAnswers: {},   // { [cardId]: 'know'|'maybe'|'dont' } — 중복 답변 보정용 (이전 평가 차감 처리)
+
+  // ── 덱 추가/편집 화면 ──
+  selectedEmoji: '📚',
+  cardInputs: [],       // 카드 직접입력 목록 (렌더링용 임시 배열)
 };
 
+// ── localStorage 헬퍼 ──
+// 페이지 새로고침 후 자동 로그인에 사용 (accessToken은 별도 저장)
 function saveUserToStorage(user) {
   if (user) localStorage.setItem('fc_user', JSON.stringify(user));
 }
@@ -257,7 +289,11 @@ function loadUserFromStorage() {
   try { return JSON.parse(localStorage.getItem('fc_user')); } catch { return null; }
 }
 
-// ── 테마 ──
+// ════════════════════════════════════════════════
+// 테마
+// ════════════════════════════════════════════════
+// fc_theme: 'light' | 'dark' | 'system' — localStorage에 영구 저장
+// 절대 키 이름 변경 금지 (변경 시 사용자 설정 초기화됨)
 function applyTheme(t) {
   const pref = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
   document.documentElement.setAttribute('data-theme', pref);
@@ -271,7 +307,13 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   if ((localStorage.getItem('fc_theme') || 'system') === 'system') applyTheme('system');
 });
 
-// ── GIS 초기화 ──
+// ════════════════════════════════════════════════
+// Google Identity Services (GIS) 초기화
+// ════════════════════════════════════════════════
+// GIS는 두 개의 클라이언트를 분리해서 사용:
+//   1) google.accounts.id  → 사용자 신원 확인 (id_token JWT 파싱)
+//   2) tokenClient         → Drive 접근 토큰 발급 전용
+// 두 클라이언트가 모두 준비된 후 tryAutoLogin() 실행
 let tokenClient;
 let _gisReady = false, _gapiReady = false;
 let _autoLoginPending = false;
@@ -328,6 +370,7 @@ async function initGapiClient() {
   _gapiReady = true;
   checkBothReady();
 }
+// Drive 토큰을 UI 없이 조용히 재발급 (자동 로그인 시 사용)
 function requestTokenSilently() {
   return new Promise((resolve, reject) => {
     _tokenResolve = resolve;
@@ -335,6 +378,7 @@ function requestTokenSilently() {
     tokenClient.requestAccessToken({ prompt: '' });
   });
 }
+// 저장된 accessToken이 아직 유효한지 실제 Drive 요청으로 검증
 async function isDriveTokenValid() {
   try {
     await driveList();
@@ -343,6 +387,10 @@ async function isDriveTokenValid() {
     return false;
   }
 }
+// 앱 시작 시 자동 로그인 시도
+// 1) 저장된 토큰 유효하면 바로 데이터 로드
+// 2) 토큰 만료 시 조용히 재발급 시도
+// 3) 실패 시 로그인 화면 표시
 async function tryAutoLogin() {
   const savedUser = loadUserFromStorage();
   if (!savedUser) { showLoginScreen(); return; }
@@ -377,7 +425,9 @@ async function tryAutoLogin() {
   }
 }
 
-// ── 인증 ──
+// ════════════════════════════════════════════════
+// 인증
+// ════════════════════════════════════════════════
 function signIn() { showLoading('Google 로그인 중...'); google.accounts.id.prompt(); }
 function signOut() {
   if (state.accessToken) google.accounts.oauth2.revoke(state.accessToken, () => {});
@@ -387,7 +437,10 @@ function signOut() {
   document.getElementById('tab-bar').style.display = 'none';
   showLoginScreen();
 }
-// ── Drive API ──
+// ════════════════════════════════════════════════
+// Drive API 래퍼
+// ════════════════════════════════════════════════
+// appDataFolder: 앱 전용 숨김 폴더, 유저당 독립 공간 (다른 앱/사람 접근 불가)
 async function driveList() { const r = await gapi.client.drive.files.list({ spaces:'appDataFolder', fields:'files(id,name)', pageSize:10 }); return r.result.files||[]; }
 async function driveRead(id) { const r = await gapi.client.drive.files.get({ fileId:id, alt:'media' }); return r.result; }
 async function driveCreate(name, content) {
@@ -402,9 +455,15 @@ async function driveUpdate(id, content) {
     method:'PATCH', headers:{ Authorization:`Bearer ${state.accessToken}`, 'Content-Type':'application/json' }, body:JSON.stringify(content)
   });
 }
+// 파일이 있으면 update, 없으면 create (ref.id로 판단)
 async function driveUpsert(name, ref, content) { if(ref.id) await driveUpdate(ref.id,content); else ref.id = await driveCreate(name,content); }
 
-// ── 데이터 ──
+// ════════════════════════════════════════════════
+// 데이터 로드 / 저장
+// ════════════════════════════════════════════════
+// Drive에 두 파일로 분리 저장:
+//   flashcard_decks.json    — 덱 목록 + 카드 내용
+//   flashcard_progress.json — 학습 진행, 세션 기록 (덱당 최대 50세션)
 async function loadAllData() {
   showLoading('데이터 불러오는 중...');
   try {
@@ -429,26 +488,32 @@ function getSample() {
     {id:'c3',front:'호환되지 않는 인터페이스를 변환해주는 구조 패턴',back:'Adapter',hint:'인터페이스 변환기'},
   ]}];
 }
+// 덱 진행 데이터 반환 (없으면 초기값 생성)
 function getDeckProgress(id) {
   if(!state.progress[id]) state.progress[id]={lastStudied:null,totalSessions:0,cards:{},sessions:[],pendingSession:null};
   return state.progress[id];
 }
+// 카드 진행 데이터 반환 (없으면 초기값 생성)
 function getCardProgress(deckId,cardId) {
   const dp=getDeckProgress(deckId);
   if(!dp.cards[cardId]) dp.cards[cardId]={status:null,starred:false};
   return dp.cards[cardId];
 }
+// 덱 편집 후 삭제된 카드의 진행 데이터 정리
 function cleanOrphanProgress(deckId,validIds) {
   const dp=state.progress[deckId]; if(!dp) return;
   Object.keys(dp.cards).forEach(id=>{ if(!validIds.includes(id)) delete dp.cards[id]; });
 }
 
-// ── UI 유틸 ──
+// ════════════════════════════════════════════════
+// UI 유틸 (로딩 / 토스트 / 화면 전환)
+// ════════════════════════════════════════════════
 function showLoading(txt) { document.getElementById('loading-text').textContent=txt||'처리 중...'; document.getElementById('loading-overlay').style.display='flex'; }
 function hideLoading() { document.getElementById('loading-overlay').style.display='none'; }
 function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function showSyncDone() { const el=document.getElementById('sync-indicator'); el.style.display='inline'; setTimeout(()=>el.style.display='none',2000); }
 function showLoginScreen() { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-login').style.display='flex'; }
+// 화면 전환 + 탭바 활성화 + 브라우저 히스토리 push (뒤로가기 지원)
 function showScreen(id) {
   document.getElementById('screen-login').style.display='none';
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -477,7 +542,9 @@ function renderUserHeader() {
   nameEl.textContent=state.user.name||state.user.email||'';
 }
 
-// ── 화면 ──
+// ════════════════════════════════════════════════
+// 화면 렌더링
+// ════════════════════════════════════════════════
 function showHome() { renderHome(); showScreen('home'); }
 function showStarred() { renderStarred(); showScreen('starred'); }
 function showStats() { renderStats(); showScreen('stats'); }
@@ -575,7 +642,14 @@ function renderStats() {
   });
 }
 
-// ── 학습 ──
+// ════════════════════════════════════════════════
+// 학습 세션
+// ════════════════════════════════════════════════
+// 학습 시작 흐름:
+//   tryStartStudy → (pendingSession 있으면) 이어하기 모달
+//                 → (학습 이력 있으면) 필터 모달 → startWithFilter
+//                 → (첫 학습) startFresh
+// 첫 세션은 순서대로, 2회차부터 랜덤 셔플 (totalSessions 기준)
 function tryStartStudy(deckId) {
   const dp=getDeckProgress(deckId);
   state.pendingDeckId=deckId;
@@ -697,6 +771,8 @@ function resumeStudy() {
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
 }
+// 학습 중간 이탈 처리
+// 세션이 완료되지 않은 경우 pendingSession에 현재 진행 상황 저장
 function exitStudy() {
   if(!state._starredMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
     const dp=getDeckProgress(state.studyDeck.id);
@@ -709,6 +785,8 @@ function exitStudy() {
   showHome();
 }
 
+// 현재 studyIdx 카드를 화면에 렌더링
+// 카드 앞면(문제)만 표시 → flipCard()로 뒷면(정답) 전환
 function renderStudyCard() {
   const q=state.studyQueue, i=state.studyIdx;
   if(i>=q.length){ showDone(); return; }
@@ -724,6 +802,8 @@ function renderStudyCard() {
   document.getElementById('card-back-face').style.display='none';
   const ft=document.getElementById('card-front-text'); ft.textContent=card.front; setFontSize(ft,card.front);
   const bt=document.getElementById('card-back-text'); bt.textContent=card.back; setFontSize(bt,card.back);
+  // 정답면에도 문제 텍스트 표시 (흐릿하게)
+  const bq=document.getElementById('card-back-question'); bq.textContent=card.front; setFontSize(bq,card.front);
   document.getElementById('card-hint-back').textContent=card.hint?'💡 '+card.hint:'';
   document.getElementById('star-btn').classList.toggle('starred',!!cp.starred);
   const statusEl = document.getElementById('card-status');
@@ -737,6 +817,8 @@ function renderStudyCard() {
   document.getElementById('btn-prev').disabled=(i===0);
   document.getElementById('btn-next').disabled=(i>=q.length-1);
 }
+// 카드 앞/뒷면 전환 (탭 또는 클릭 시 호출)
+// 뒤집으면 답변 버튼 표시, 힌트 버튼 숨김
 function flipCard() {
   state.studyFlipped=!state.studyFlipped;
   document.getElementById('card-front-face').style.display=state.studyFlipped?'none':'flex';
@@ -759,6 +841,9 @@ function toggleStar(e) {
   document.getElementById('star-btn').classList.toggle('starred',cp.starred);
   saveProgress();
 }
+// 카드 평가 처리
+// 같은 카드를 재평가할 경우 이전 카운트를 차감 후 새 평가 반영 (sessionAnswers로 추적)
+// pendingSession을 매 답변마다 갱신 → 중간 이탈해도 진행 상황 보존
 function answer(type) {
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
   const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
@@ -780,6 +865,8 @@ function answer(type) {
   }
   saveProgress(); renderStudyCard();
 }
+// 세션 완료 처리
+// totalSessions 증가, sessions 배열에 기록 추가 (최대 50개 유지), pendingSession 초기화
 function showDone() {
   if(!state._starredMode) {
     const dp=getDeckProgress(state.studyDeck.id);
@@ -800,7 +887,9 @@ function showDone() {
   document.getElementById('res-dont').textContent=state.studyResults.dont;
 }
 
-// ── 덱 추가/편집 ──
+// ════════════════════════════════════════════════
+// 덱 추가 / 편집
+// ════════════════════════════════════════════════
 function showAddDeck(deckId) {
   state.editingDeckId=deckId||null; state.selectedEmoji='📚'; state.cardInputs=[];
   document.getElementById('adddeck-title').textContent=deckId?'덱 편집':'새 덱 만들기';
@@ -881,7 +970,10 @@ async function deleteDeck() {
   } catch(e){ showToast('삭제 실패: '+e.message); } finally { hideLoading(); }
 }
 
-// ── 유틸 ──
+// ════════════════════════════════════════════════
+// 유틸
+// ════════════════════════════════════════════════
+// 텍스트 길이에 따라 카드 글자 크기 자동 조정
 function setFontSize(el,text) {
   const len=text.length;
   if(len<=20) el.style.fontSize='22px';
@@ -889,6 +981,7 @@ function setFontSize(el,text) {
   else if(len<=70) el.style.fontSize='15px';
   else el.style.fontSize='13px';
 }
+// CSV 한 줄 파싱 (따옴표 안의 쉼표/개행 처리 포함)
 function parseCSVLine(line) {
   const fields=[]; let cur='',inQuote=false;
   for(let i=0;i<line.length;i++){
@@ -899,7 +992,10 @@ function parseCSVLine(line) {
   }
   fields.push(cur.trim()); return fields;
 }
-// ── 카드 편집 모달 ──
+// ════════════════════════════════════════════════
+// 카드 편집 모달 (학습 화면에서 ✏️ 버튼)
+// ════════════════════════════════════════════════
+// 별표모드일 경우 card._deckId로 실제 덱을 찾아 업데이트
 function openEditCardModal() {
   const card = state.studyQueue[state.studyIdx];
   if (!card) return;
@@ -933,7 +1029,10 @@ async function saveEditCard() {
   try { await saveDecks(); showToast('저장 완료!'); } catch(e) { showToast('저장 실패: ' + e.message); } finally { hideLoading(); }
 }
 
-// ── CSV 다운로드 ──
+// ════════════════════════════════════════════════
+// CSV 다운로드
+// ════════════════════════════════════════════════
+// UTF-8 BOM(﻿) 포함 — Windows Excel / 갤럭시 한글 깨짐 방지
 function downloadCSV() {
   const deck = state.decks.find(d => d.id === state.editingDeckId);
   if (!deck) return;
@@ -950,6 +1049,7 @@ function downloadCSV() {
   setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
+// HTML 특수문자 이스케이프 (XSS 방지, innerHTML 삽입 시 사용)
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
