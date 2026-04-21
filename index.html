@@ -286,11 +286,13 @@ let state = {
 
 // ── localStorage 헬퍼 ──
 // 페이지 새로고침 후 자동 로그인에 사용 (accessToken은 별도 저장)
+// 유저 정보 + Supabase 토큰을 sessionStorage에 임시 저장
+// (페이지 새로고침 시 GIS auto_select로 자동 재발급)
 function saveUserToStorage(user) {
-  if (user) localStorage.setItem('fc_user', JSON.stringify(user));
+  if (user) sessionStorage.setItem('fc_user', JSON.stringify(user));
 }
 function loadUserFromStorage() {
-  try { return JSON.parse(localStorage.getItem('fc_user')); } catch { return null; }
+  try { return JSON.parse(sessionStorage.getItem('fc_user')); } catch { return null; }
 }
 
 // ════════════════════════════════════════════════
