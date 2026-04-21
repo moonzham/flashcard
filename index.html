@@ -17,7 +17,7 @@
     <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
     Google로 로그인
   </button>
-  <div class="login-note">데이터는 본인의 Google Drive에 저장됩니다<br>앱 전용 폴더에만 접근해요</div>
+  <div class="login-note">데이터는 안전하게 클라우드에 저장됩니다<br>본인 계정으로만 접근할 수 있어요</div>
 </div>
 
 <div id="screen-home" class="screen">
@@ -238,27 +238,31 @@
 // 상수
 // ════════════════════════════════════════════════
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260421.01';
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata'; // Drive appDataFolder 접근 권한
-const DECKS_FILE = 'flashcard_decks.json';     // Drive에 저장되는 덱/카드 데이터 파일명
-const PROGRESS_FILE = 'flashcard_progress.json'; // Drive에 저장되는 학습 진행 데이터 파일명
+const APP_VERSION = 'ver.260421.02';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
+
+// ── Supabase 연결 정보 ──
+// anon key는 공개되어도 안전 (RLS가 데이터 보호)
+const SUPA_URL = 'https://wyujirkoyzhyetrpyyhx.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5dWppcmtveXpoeWV0cnB5eWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDE1NTgsImV4cCI6MjA5MjMxNzU1OH0.9deK6cqyhPh3eUk53pO9dATSLxEQoEAGQCMsbn40dKU';
+const SUPA_SCHEMA = 'flashcard'; // 스키마 분리 (다른 앱과 테이블 충돌 방지)
 
 // ════════════════════════════════════════════════
 // 전역 상태 (앱 런타임 상태 전체를 여기서 관리)
 // ════════════════════════════════════════════════
 let state = {
   // ── 인증 ──
-  accessToken: null,  // Google Drive API 접근 토큰 (페이지 새로고침 시 초기화됨)
-  user: null,         // { name, email, picture } — GIS id_token JWT에서 파싱
-
-  // ── Drive 파일 ID (upsert 시 create/update 판단에 사용) ──
-  decksFileId: null,
-  progressFileId: null,
+  user: null,  // { name, email, picture, sub } — GIS id_token JWT에서 파싱
+               // sub = Google 고유 사용자 ID → Supabase RLS의 user_id로 사용
 
   // ── 데이터 ──
-  decks: [],     // [{ id, name, emoji, cards: [{id, front, back, hint}] }]
-  progress: {},  // { [deckId]: { lastStudied, totalSessions, cards, sessions, pendingSession } }
+  // deck 구조: { deck_id, user_id, name, emoji, last_studied, total_sessions,
+  //              pending_session, created_at, cards: [{card_id, deck_id, front, back, hint, image_url, sort_order}] }
+  decks: [],
+
+  // card_progress 인메모리 캐시: { [card_id]: { status, starred } }
+  // 매번 DB 조회 대신 로드 시 한 번에 가져와서 메모리에 유지
+  cardProgress: {},
 
   // ── 덱 편집 ──
   editingDeckId: null,  // 현재 편집 중인 덱 ID (null이면 신규 생성)
@@ -273,7 +277,7 @@ let state = {
 
   // ── 세션 결과 집계 ──
   studyResults: {know:0, maybe:0, dont:0}, // 이번 세션 누적 평가 카운트
-  sessionAnswers: {},   // { [cardId]: 'know'|'maybe'|'dont' } — 중복 답변 보정용 (이전 평가 차감 처리)
+  sessionAnswers: {},   // { [card_id]: 'know'|'maybe'|'dont' } — 중복 답변 보정용
 
   // ── 덱 추가/편집 화면 ──
   selectedEmoji: '📚',
@@ -459,50 +463,112 @@ async function driveUpdate(id, content) {
 async function driveUpsert(name, ref, content) { if(ref.id) await driveUpdate(ref.id,content); else ref.id = await driveCreate(name,content); }
 
 // ════════════════════════════════════════════════
-// 데이터 로드 / 저장
+// 데이터 로드 / 저장 (Supabase)
 // ════════════════════════════════════════════════
-// Drive에 두 파일로 분리 저장:
-//   flashcard_decks.json    — 덱 목록 + 카드 내용
-//   flashcard_progress.json — 학습 진행, 세션 기록 (덱당 최대 50세션)
+// 로드 순서: decks → cards (deck에 attach) → card_progress (인메모리 캐시)
 async function loadAllData() {
-  showLoading('데이터 불러오는 중...');
   try {
-    const files = await driveList();
-    const df = files.find(f=>f.name===DECKS_FILE), pf = files.find(f=>f.name===PROGRESS_FILE);
-    if (df) { state.decksFileId=df.id; state.decks=(await driveRead(df.id)).decks||[]; }
-    else { state.decks=getSample(); await saveDecks(); }
-    if (pf) { state.progressFileId=pf.id; state.progress=(await driveRead(pf.id)).progress||{}; }
-    else { state.progress={}; await saveProgress(); }
-    renderUserHeader(); document.getElementById('tab-bar').style.display='flex'; showHome(); showSyncDone();
-  } catch(e) { console.error(e); showToast('데이터 로드 실패'); }
-  finally { hideLoading(); }
-}
-async function saveDecks() { const r={id:state.decksFileId}; await driveUpsert(DECKS_FILE,r,{version:1,decks:state.decks}); state.decksFileId=r.id; }
-async function saveProgress() { const r={id:state.progressFileId}; await driveUpsert(PROGRESS_FILE,r,{version:1,progress:state.progress}); state.progressFileId=r.id; }
-async function saveAll() { await Promise.all([saveDecks(),saveProgress()]); showSyncDone(); }
+    const uid = state.user.sub;
 
-function getSample() {
-  return [{id:'deck_1',name:'샘플 덱',emoji:'📚',cards:[
-    {id:'c1',front:'서로 관련된 객체들의 패밀리를 생성하기 위해 인터페이스를 제공하는 생성 패턴',back:'Abstract Factory',hint:'구체 클래스 명시 없이 생성'},
-    {id:'c2',front:'객체의 인스턴스가 오직 하나만 생성되도록 보장하는 생성 패턴',back:'Singleton',hint:'전역 단일 인스턴스'},
-    {id:'c3',front:'호환되지 않는 인터페이스를 변환해주는 구조 패턴',back:'Adapter',hint:'인터페이스 변환기'},
-  ]}];
+    // 덱 목록 로드
+    const decks = await sbSelect('decks', `user_id=eq.${uid}&order=created_at.asc`);
+
+    if (!decks || decks.length === 0) {
+      // 첫 로그인: 샘플 덱 생성
+      state.decks = [];
+      await createSampleDeck();
+    } else {
+      // 각 덱의 카드 로드 (deck_id 목록으로 한 번에)
+      const deckIds = decks.map(d => d.deck_id).join(',');
+      const cards = await sbSelect('cards', `deck_id=in.(${deckIds})&order=sort_order.asc`);
+
+      // 카드를 덱에 attach
+      state.decks = decks.map(d => ({
+        ...d,
+        id: d.deck_id, // 기존 코드 호환용 (id 필드도 유지)
+        cards: (cards || []).filter(c => c.deck_id === d.deck_id).map(c => ({
+          ...c,
+          id: c.card_id, // 기존 코드 호환용
+        }))
+      }));
+
+      // card_progress 인메모리 캐시 로드
+      const progress = await sbSelect('card_progress', `user_id=eq.${uid}`);
+      state.cardProgress = {};
+      (progress || []).forEach(p => {
+        state.cardProgress[p.card_id] = { status: p.status, starred: p.starred };
+      });
+    }
+
+    renderUserHeader();
+    document.getElementById('tab-bar').style.display = 'flex';
+    showHome();
+    showSyncDone();
+  } catch(e) {
+    console.error(e);
+    showToast('데이터 로드 실패: ' + e.message);
+  } finally {
+    hideLoading();
+  }
 }
-// 덱 진행 데이터 반환 (없으면 초기값 생성)
-function getDeckProgress(id) {
-  if(!state.progress[id]) state.progress[id]={lastStudied:null,totalSessions:0,cards:{},sessions:[],pendingSession:null};
-  return state.progress[id];
+
+// 샘플 덱 생성 (첫 로그인 시)
+async function createSampleDeck() {
+  const uid = state.user.sub;
+  const sampleCards = [
+    { front: '서로 관련된 객체들의 패밀리를 생성하기 위해 인터페이스를 제공하는 생성 패턴', back: 'Abstract Factory', hint: '구체 클래스 명시 없이 생성' },
+    { front: '객체의 인스턴스가 오직 하나만 생성되도록 보장하는 생성 패턴', back: 'Singleton', hint: '전역 단일 인스턴스' },
+    { front: '호환되지 않는 인터페이스를 변환해주는 구조 패턴', back: 'Adapter', hint: '인터페이스 변환기' },
+  ];
+  const [newDeck] = await sbInsert('decks', { user_id: uid, name: '샘플 덱', emoji: '📚' });
+  const cardRows = sampleCards.map((c, i) => ({ deck_id: newDeck.deck_id, ...c, sort_order: i }));
+  const newCards = await sbInsert('cards', cardRows);
+  state.decks = [{ ...newDeck, id: newDeck.deck_id, cards: (newCards || []).map(c => ({ ...c, id: c.card_id })) }];
 }
-// 카드 진행 데이터 반환 (없으면 초기값 생성)
-function getCardProgress(deckId,cardId) {
-  const dp=getDeckProgress(deckId);
-  if(!dp.cards[cardId]) dp.cards[cardId]={status:null,starred:false};
-  return dp.cards[cardId];
+
+// 카드 진행 데이터 반환 (인메모리 캐시 기준)
+function getCardProgress(deckId, cardId) {
+  if (!state.cardProgress[cardId]) state.cardProgress[cardId] = { status: null, starred: false };
+  return state.cardProgress[cardId];
 }
-// 덱 편집 후 삭제된 카드의 진행 데이터 정리
-function cleanOrphanProgress(deckId,validIds) {
-  const dp=state.progress[deckId]; if(!dp) return;
-  Object.keys(dp.cards).forEach(id=>{ if(!validIds.includes(id)) delete dp.cards[id]; });
+
+// 덱 진행 데이터 반환 (deck 객체에서 직접)
+function getDeckMeta(deckId) {
+  return state.decks.find(d => d.deck_id === deckId || d.id === deckId) || {};
+}
+
+// 카드 progress DB 저장 (upsert — user_id+card_id 유니크)
+async function saveCardProgress(cardId, deckId, status, starred) {
+  const uid = state.user.sub;
+  await sbUpsert('card_progress', {
+    user_id: uid, card_id: cardId, deck_id: deckId, status, starred,
+    updated_at: new Date().toISOString()
+  }, 'user_id,card_id');
+}
+
+// 덱 메타(last_studied, total_sessions, pending_session) 저장
+async function saveDeckMeta(deckId, fields) {
+  await sbUpdate('decks', `deck_id=eq.${deckId}`, fields);
+  // 로컬 state도 업데이트
+  const deck = state.decks.find(d => d.deck_id === deckId || d.id === deckId);
+  if (deck) Object.assign(deck, fields);
+}
+
+// 세션 기록 저장
+async function saveSession(deckId, know, maybe, dont, completed) {
+  const uid = state.user.sub;
+  await sbInsert('study_sessions', {
+    user_id: uid, deck_id: deckId,
+    studied_at: new Date().toISOString().split('T')[0],
+    know_count: know, maybe_count: maybe, dont_count: dont, completed
+  });
+}
+
+// 덱 편집 후 삭제된 카드의 progress 캐시 정리
+function cleanOrphanProgress(deckId, validIds) {
+  Object.keys(state.cardProgress).forEach(cid => {
+    if (!validIds.includes(cid)) delete state.cardProgress[cid];
+  });
 }
 
 // ════════════════════════════════════════════════
@@ -558,22 +624,23 @@ function showSettings() {
 function renderHome() {
   const list=document.getElementById('deck-list'); list.innerHTML='';
   state.decks.forEach(deck=>{
-    const dp=getDeckProgress(deck.id);
-    const total=deck.cards.length, learned=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='know').length;
+    const total=deck.cards.length;
+    const learned=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).status==='know').length;
     const pct=total?Math.round(learned/total*100):0;
-    const last=dp.lastStudied?`마지막: ${dp.lastStudied}`:'아직 학습 안 함';
+    const last=deck.last_studied?`마지막: ${deck.last_studied}`:'아직 학습 안 함';
+    const hasPending=!!deck.pending_session;
     const div=document.createElement('div'); div.className='deck-card';
     div.innerHTML=`<span class="deck-emoji">${deck.emoji}</span>
       <div class="deck-info">
-        <div class="deck-name">${deck.name}${dp.pendingSession?'<span class="resume-badge">이어하기</span>':''}</div>
+        <div class="deck-name">${deck.name}${hasPending?'<span class="resume-badge">이어하기</span>':''}</div>
         <div class="deck-meta">${total}개 카드 · ${learned}/${total} 완료<br><span style="color:var(--muted);font-size:11px">${last}</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
         <div class="deck-pct">${pct}%</div>
-        <button onclick="event.stopPropagation();editDeck('${deck.id}')" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 10px;font-family:inherit">편집</button>
+        <button onclick="event.stopPropagation();editDeck('${deck.deck_id||deck.id}')" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 10px;font-family:inherit">편집</button>
       </div>`;
-    div.onclick=()=>tryStartStudy(deck.id);
+    div.onclick=()=>tryStartStudy(deck.deck_id||deck.id);
     list.appendChild(div);
   });
 }
@@ -581,8 +648,7 @@ function renderHome() {
 function renderStarred() {
   const list=document.getElementById('starred-list'); list.innerHTML=''; let found=false;
   state.decks.forEach(deck=>{
-    const dp=getDeckProgress(deck.id);
-    const starred=deck.cards.filter(c=>(dp.cards[c.id]||{}).starred);
+    const starred=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).starred);
     if(!starred.length) return; found=true;
     const h=document.createElement('div'); h.className='section-title'; h.textContent=deck.emoji+' '+deck.name; list.appendChild(h);
     starred.forEach(card=>{
@@ -597,16 +663,16 @@ function renderStarred() {
 function startStarredStudy() {
   const allStarred=[];
   state.decks.forEach(deck=>{
-    const dp=getDeckProgress(deck.id);
-    deck.cards.filter(c=>(dp.cards[c.id]||{}).starred).forEach(c=>allStarred.push({...c, _deckId:deck.id}));
+    deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).starred)
+      .forEach(c=>allStarred.push({...c, id:c.card_id||c.id, _deckId:deck.deck_id||deck.id}));
   });
   if(!allStarred.length){ showToast('별표 카드가 없어요'); return; }
   _launchStarredSession(allStarred, 0);
 }
 function startStarredStudyFrom(deck, startCard) {
-  const dp=getDeckProgress(deck.id);
-  const starred=deck.cards.filter(c=>(dp.cards[c.id]||{}).starred).map(c=>({...c, _deckId:deck.id}));
-  const idx=starred.findIndex(c=>c.id===startCard.id);
+  const starred=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).starred)
+    .map(c=>({...c, id:c.card_id||c.id, _deckId:deck.deck_id||deck.id}));
+  const idx=starred.findIndex(c=>c.id===(startCard.card_id||startCard.id));
   _launchStarredSession(starred, idx<0?0:idx);
 }
 function _launchStarredSession(cards, startIdx) {
@@ -619,25 +685,31 @@ function _launchStarredSession(cards, startIdx) {
   showScreen('study'); renderStudyCard();
 }
 
-function renderStats() {
+async function renderStats() {
   const list=document.getElementById('stats-list'); list.innerHTML='';
   if(!state.decks.length){ list.innerHTML='<div style="color:var(--muted);text-align:center;padding:40px 0;font-size:14px">덱이 없어요</div>'; return; }
+
+  // 세션 기록 DB에서 로드 (최근 5개씩)
+  const uid = state.user.sub;
+  const deckIds = state.decks.map(d=>d.deck_id||d.id).join(',');
+  const sessions = await sbSelect('study_sessions', `user_id=eq.${uid}&deck_id=in.(${deckIds})&order=studied_at.desc&limit=50`).catch(()=>[]);
+
   state.decks.forEach(deck=>{
-    const dp=getDeckProgress(deck.id);
+    const did = deck.deck_id||deck.id;
     const total=deck.cards.length;
-    const know=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='know').length;
-    const maybe=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='maybe').length;
-    const dont=deck.cards.filter(c=>(dp.cards[c.id]||{}).status==='dont').length;
-    const sessions=(dp.sessions||[]).slice(-5).reverse();
-    const sessHtml=sessions.length?`<div class="section-title" style="margin-top:12px">최근 학습 기록</div>${sessions.map(s=>`<div class="session-item"><span class="session-date">${s.date}${s.completed===false?' (미완료)':''}</span><div class="session-scores"><span style="color:#16a34a">✅${s.know}</span><span style="color:#d97706">💭${s.maybe}</span><span style="color:#e53e3e">😅${s.dont}</span></div></div>`).join('')}`:'';
+    const know=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).status==='know').length;
+    const maybe=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).status==='maybe').length;
+    const dont=deck.cards.filter(c=>(state.cardProgress[c.card_id||c.id]||{}).status==='dont').length;
+    const deckSessions=(sessions||[]).filter(s=>s.deck_id===did).slice(0,5);
+    const sessHtml=deckSessions.length?`<div class="section-title" style="margin-top:12px">최근 학습 기록</div>${deckSessions.map(s=>`<div class="session-item"><span class="session-date">${s.studied_at}${!s.completed?' (미완료)':''}</span><div class="session-scores"><span style="color:#16a34a">✅${s.know_count}</span><span style="color:#d97706">💭${s.maybe_count}</span><span style="color:#e53e3e">😅${s.dont_count}</span></div></div>`).join('')}`:'';
     const div=document.createElement('div'); div.className='stats-card';
     div.innerHTML=`<div class="stats-title">${deck.emoji} ${deck.name}</div>
       <div class="stats-row"><span class="stats-label">총 카드</span><span class="stats-val">${total}개</span></div>
       <div class="stats-row"><span class="stats-label">✅ 알았어요</span><span class="stats-val" style="color:#16a34a">${know}개</span></div>
       <div class="stats-row"><span class="stats-label">💭 애매해요</span><span class="stats-val" style="color:#d97706">${maybe}개</span></div>
       <div class="stats-row"><span class="stats-label">😅 몰랐어요</span><span class="stats-val" style="color:#e53e3e">${dont}개</span></div>
-      <div class="stats-row"><span class="stats-label">총 학습 횟수</span><span class="stats-val">${dp.totalSessions||0}회</span></div>
-      <div class="stats-row"><span class="stats-label">마지막 학습</span><span class="stats-val">${dp.lastStudied||'-'}</span></div>${sessHtml}`;
+      <div class="stats-row"><span class="stats-label">총 학습 횟수</span><span class="stats-val">${deck.total_sessions||0}회</span></div>
+      <div class="stats-row"><span class="stats-label">마지막 학습</span><span class="stats-val">${deck.last_studied||'-'}</span></div>${sessHtml}`;
     list.appendChild(div);
   });
 }
@@ -651,15 +723,14 @@ function renderStats() {
 //                 → (첫 학습) startFresh
 // 첫 세션은 순서대로, 2회차부터 랜덤 셔플 (totalSessions 기준)
 function tryStartStudy(deckId) {
-  const dp=getDeckProgress(deckId);
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId);
   state.pendingDeckId=deckId;
-  if(dp.pendingSession) {
-    const p=dp.pendingSession, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
+  if(deck && deck.pending_session) {
+    const p=deck.pending_session, done=p.results.know+p.results.maybe+p.results.dont, total=done+p.remainingIds.length;
     document.getElementById('resume-modal-sub').textContent=`${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
     document.getElementById('resume-modal').style.display='flex';
   } else {
-    const deck=state.decks.find(d=>d.id===deckId);
-    const hasHistory=deck&&deck.cards.some(c=>(dp.cards[c.id]||{}).status);
+    const hasHistory=deck&&deck.cards.some(c=>(state.cardProgress[c.card_id||c.id]||{}).status);
     if(hasHistory) { openFilterModal(deckId); }
     else { startFresh(deckId); }
   }
@@ -668,20 +739,19 @@ function toggleFilterOpt(key) {
   const cb = document.getElementById('filter-' + key);
   cb.checked = !cb.checked;
   document.getElementById('filter-opt-' + key).classList.toggle('checked', cb.checked);
-  updateFilterTotal(_currentFilterDeck, _currentFilterDp);
+  updateFilterTotal(_currentFilterDeck);
 }
 function _setFilterCheck(key, val) {
   document.getElementById('filter-' + key).checked = val;
   document.getElementById('filter-opt-' + key).classList.toggle('checked', val);
 }
-let _currentFilterDeck = null, _currentFilterDp = null;
+let _currentFilterDeck = null;
 function openFilterModal(deckId) {
-  const deck=state.decks.find(d=>d.id===deckId); if(!deck) return;
-  const dp=getDeckProgress(deckId);
-  _currentFilterDeck = deck; _currentFilterDp = dp;
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId); if(!deck) return;
+  _currentFilterDeck = deck;
   const counts={know:0,maybe:0,dont:0,none:0};
   deck.cards.forEach(c=>{
-    const s=(dp.cards[c.id]||{}).status;
+    const s=(state.cardProgress[c.card_id||c.id]||{}).status;
     if(s==='know') counts.know++;
     else if(s==='maybe') counts.maybe++;
     else if(s==='dont') counts.dont++;
@@ -695,16 +765,15 @@ function openFilterModal(deckId) {
   _setFilterCheck('maybe', counts.maybe>0);
   _setFilterCheck('dont', counts.dont>0);
   _setFilterCheck('none', counts.none>0);
-  updateFilterTotal(deck, dp);
+  updateFilterTotal(deck);
   document.getElementById('filter-modal').style.display='flex';
 }
-function updateFilterTotal(deck, dp) {
+function updateFilterTotal(deck) {
   const d = deck || _currentFilterDeck;
-  const p = dp || _currentFilterDp;
-  if (!d || !p) return;
+  if (!d) return;
   const selected=getSelectedStatuses();
   const count=d.cards.filter(c=>{
-    const s=(p.cards[c.id]||{}).status||null;
+    const s=(state.cardProgress[c.card_id||c.id]||{}).status||null;
     return selected.includes(s);
   }).length;
   document.getElementById('filter-total-info').textContent='총 '+count+'장 공부';
@@ -722,20 +791,20 @@ function closeFilterModal() {
 }
 function startWithFilter() {
   const deckId=state.pendingDeckId;
-  const deck=state.decks.find(d=>d.id===deckId); if(!deck) return;
-  const dp=getDeckProgress(deckId);
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId); if(!deck) return;
   const selected=getSelectedStatuses();
   if(!selected.length){ showToast('최소 하나는 선택해주세요'); return; }
   const filtered=deck.cards.filter(c=>{
-    const s=(dp.cards[c.id]||{}).status||null;
+    const s=(state.cardProgress[c.card_id||c.id]||{}).status||null;
     return selected.includes(s);
-  });
+  }).map(c=>({...c, id:c.card_id||c.id}));
   if(!filtered.length){ showToast('해당하는 카드가 없어요'); return; }
   closeFilterModal();
-  dp.pendingSession=null;
+  deck.pending_session=null;
+  saveDeckMeta(deck.deck_id||deck.id, {pending_session:null});
   state.studyDeck=deck;
   const cards=[...filtered];
-  state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
+  state.studyQueue=(deck.total_sessions>=1)?cards.sort(()=>Math.random()-.5):cards;
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0}; state.sessionAnswers={};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
@@ -744,11 +813,10 @@ function startFresh(deckId) {
   // 첫 공부(이력 없음) 경우에만 직접 호출됨
   document.getElementById('resume-modal').style.display='none';
   const id=deckId||state.pendingDeckId;
-  const deck=state.decks.find(d=>d.id===id); if(!deck) return;
-  const dp=getDeckProgress(id);
-  dp.pendingSession=null;
-  const cards=[...deck.cards];
-  state.studyDeck=deck; state.studyQueue=(dp.totalSessions>=1)?cards.sort(()=>Math.random()-.5):cards;
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===id); if(!deck) return;
+  deck.pending_session=null;
+  const cards=[...deck.cards].map(c=>({...c, id:c.card_id||c.id}));
+  state.studyDeck=deck; state.studyQueue=(deck.total_sessions>=1)?cards.sort(()=>Math.random()-.5):cards;
   state.studyIdx=0; state.studyResults={know:0,maybe:0,dont:0}; state.sessionAnswers={};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
@@ -757,29 +825,29 @@ function resumeFromFresh() {
   // 이어하기 모달에서 "처음부터" 선택 → 평가선택 모달로
   document.getElementById('resume-modal').style.display='none';
   const deckId=state.pendingDeckId;
-  const dp=getDeckProgress(deckId);
-  dp.pendingSession=null;
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId);
+  if(deck) { deck.pending_session=null; saveDeckMeta(deckId, {pending_session:null}); }
   openFilterModal(deckId);
 }
 function resumeStudy() {
   document.getElementById('resume-modal').style.display='none';
-  const deck=state.decks.find(d=>d.id===state.pendingDeckId); if(!deck) return;
-  const p=getDeckProgress(state.pendingDeckId).pendingSession;
+  const deck=state.decks.find(d=>(d.deck_id||d.id)===state.pendingDeckId); if(!deck) return;
+  const p=deck.pending_session;
   state.studyDeck=deck;
-  state.studyQueue=p.remainingIds.map(id=>deck.cards.find(c=>c.id===id)).filter(Boolean);
+  state.studyQueue=p.remainingIds.map(id=>deck.cards.find(c=>(c.card_id||c.id)===id)).filter(Boolean)
+    .map(c=>({...c, id:c.card_id||c.id}));
   state.studyIdx=0; state.studyResults={...p.results}; state.sessionAnswers={...p.sessionAnswers||{}};
   document.getElementById('study-deck-name').textContent=deck.name;
   showScreen('study'); renderStudyCard();
 }
 // 학습 중간 이탈 처리
-// 세션이 완료되지 않은 경우 pendingSession에 현재 진행 상황 저장
+// 세션이 완료되지 않은 경우 pending_session에 현재 진행 상황 저장 후 DB upsert
 function exitStudy() {
   if(!state._starredMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
-    const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
-    dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
-    dp.lastStudied=today;
-    saveProgress();
+    const pending={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
+    const deckId=state.studyDeck.deck_id||state.studyDeck.id;
+    saveDeckMeta(deckId, { pending_session:pending, last_studied:today });
   }
   state._starredMode=false;
   showHome();
@@ -791,8 +859,8 @@ function renderStudyCard() {
   const q=state.studyQueue, i=state.studyIdx;
   if(i>=q.length){ showDone(); return; }
   const card=q[i];
-  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
-  const cp=getCardProgress(deckId, card.id);
+  const cardId=card.card_id||card.id;
+  const cp=getCardProgress(null, cardId);
   state.studyFlipped=false; state.studyShowHint=false;
   const done=state.studyResults.know+state.studyResults.maybe+state.studyResults.dont;
   const total=state.studyQueue.length;
@@ -836,48 +904,57 @@ function toggleHint() {
 function toggleStar(e) {
   e.stopPropagation();
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
-  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
-  const cp=getCardProgress(deckId,card.id); cp.starred=!cp.starred;
+  const cardId=card.card_id||card.id;
+  const deckId=state._starredMode ? card._deckId : (state.studyDeck.deck_id||state.studyDeck.id);
+  const cp=getCardProgress(null, cardId); cp.starred=!cp.starred;
   document.getElementById('star-btn').classList.toggle('starred',cp.starred);
-  saveProgress();
+  saveCardProgress(cardId, deckId, cp.status, cp.starred).catch(e=>console.error('star save fail', e));
 }
 // 카드 평가 처리
 // 같은 카드를 재평가할 경우 이전 카운트를 차감 후 새 평가 반영 (sessionAnswers로 추적)
 // pendingSession을 매 답변마다 갱신 → 중간 이탈해도 진행 상황 보존
 function answer(type) {
   const card=state.studyQueue[state.studyIdx]; if(!card) return;
-  const deckId=state._starredMode ? card._deckId : state.studyDeck.id;
-  getCardProgress(deckId,card.id).status=type;
+  const cardId=card.card_id||card.id;
+  const deckId=state._starredMode ? card._deckId : (state.studyDeck.deck_id||state.studyDeck.id);
+
+  // 인메모리 캐시 업데이트
+  getCardProgress(null, cardId).status=type;
+
+  // DB 저장 (비동기, 결과 기다리지 않음)
+  saveCardProgress(cardId, deckId, type, (state.cardProgress[cardId]||{}).starred||false).catch(e=>console.error('progress save fail', e));
+
   // 이번 세션에서 이미 답변한 카드면 기존 카운트 차감
-  const prev=state.sessionAnswers[card.id];
+  const prev=state.sessionAnswers[cardId];
   if(prev) state.studyResults[prev]=Math.max(0, state.studyResults[prev]-1);
-  state.sessionAnswers[card.id]=type;
+  state.sessionAnswers[cardId]=type;
   state.studyResults[type]++; state.studyIdx++;
+
   if(!state._starredMode) {
-    const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
     if(state.studyIdx < state.studyQueue.length) {
-      dp.pendingSession={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
+      const pending={ date:today, remainingIds:state.studyQueue.slice(state.studyIdx).map(c=>c.card_id||c.id), results:{...state.studyResults}, sessionAnswers:{...state.sessionAnswers} };
+      saveDeckMeta(deckId, { pending_session:pending, last_studied:today }).catch(()=>{});
     } else {
-      dp.pendingSession=null;
+      saveDeckMeta(deckId, { pending_session:null, last_studied:today }).catch(()=>{});
     }
-    dp.lastStudied=today;
   }
-  saveProgress(); renderStudyCard();
+  renderStudyCard();
 }
 // 세션 완료 처리
-// totalSessions 증가, sessions 배열에 기록 추가 (최대 50개 유지), pendingSession 초기화
+// totalSessions 증가, study_sessions 테이블에 기록, pendingSession 초기화
 function showDone() {
   if(!state._starredMode) {
-    const dp=getDeckProgress(state.studyDeck.id);
     const today=new Date().toISOString().split('T')[0];
-    dp.lastStudied=today; dp.totalSessions=(dp.totalSessions||0)+1; dp.pendingSession=null;
-    if(!dp.sessions) dp.sessions=[];
-    dp.sessions.push({date:today,know:state.studyResults.know,maybe:state.studyResults.maybe,dont:state.studyResults.dont,completed:true});
-    if(dp.sessions.length>50) dp.sessions=dp.sessions.slice(-50);
-    saveProgress();
-  } else {
-    saveProgress();
+    const deckId=state.studyDeck.deck_id||state.studyDeck.id;
+    const newTotal=(state.studyDeck.total_sessions||0)+1;
+    // DB 저장 (비동기)
+    saveDeckMeta(deckId, { last_studied:today, total_sessions:newTotal, pending_session:null }).catch(()=>{});
+    saveSession(deckId, state.studyResults.know, state.studyResults.maybe, state.studyResults.dont, true).catch(()=>{});
+    // 로컬 state도 업데이트
+    state.studyDeck.total_sessions=newTotal;
+    state.studyDeck.last_studied=today;
+    state.studyDeck.pending_session=null;
   }
   state._starredMode=false;
   showScreen('done');
@@ -905,11 +982,11 @@ function showAddDeck(deckId) {
     emojiRow.appendChild(btn);
   });
   if(deckId) {
-    const deck=state.decks.find(d=>d.id===deckId);
+    const deck=state.decks.find(d=>(d.deck_id||d.id)===deckId);
     document.getElementById('deck-name-input').value=deck.name;
     state.selectedEmoji=deck.emoji;
     document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent===deck.emoji));
-    state.cardInputs=deck.cards.map(c=>({...c}));
+    state.cardInputs=deck.cards.map(c=>({...c, id:c.card_id||c.id}));
   } else {
     document.getElementById('deck-name-input').value='';
     state.cardInputs=[{id:'card_'+Date.now(),front:'',back:'',hint:''}];
@@ -953,20 +1030,41 @@ async function saveDeck() {
   if(!valid.length){ alert('카드를 최소 1개 입력해주세요'); return; }
   showLoading('저장 중...');
   try {
+    const uid=state.user.sub;
     if(state.editingDeckId) {
-      const idx=state.decks.findIndex(d=>d.id===state.editingDeckId);
-      if(idx!==-1){ state.decks[idx]={...state.decks[idx],name,emoji:state.selectedEmoji,cards:valid}; cleanOrphanProgress(state.editingDeckId,valid.map(c=>c.id)); }
-    } else { state.decks.push({id:'deck_'+Date.now(),name,emoji:state.selectedEmoji,cards:valid}); }
-    await saveAll(); showToast('저장 완료!'); showHome();
+      // 덱 이름/이모지 업데이트
+      await sbUpdate('decks', `deck_id=eq.${state.editingDeckId}`, { name, emoji:state.selectedEmoji });
+
+      // 기존 카드 전부 삭제 후 재삽입 (순서 보장)
+      await sbDelete('cards', `deck_id=eq.${state.editingDeckId}`);
+      const cardRows=valid.map((c,i)=>({ deck_id:state.editingDeckId, front:c.front, back:c.back, hint:c.hint||null, sort_order:i }));
+      const newCards=await sbInsert('cards', cardRows);
+
+      // 로컬 state 업데이트
+      const idx=state.decks.findIndex(d=>(d.deck_id||d.id)===state.editingDeckId);
+      if(idx!==-1){
+        const updatedCards=(newCards||[]).map(c=>({...c, id:c.card_id}));
+        state.decks[idx]={...state.decks[idx], name, emoji:state.selectedEmoji, cards:updatedCards};
+        cleanOrphanProgress(state.editingDeckId, updatedCards.map(c=>c.card_id));
+      }
+    } else {
+      // 신규 덱 생성
+      const [newDeck]=await sbInsert('decks', { user_id:uid, name, emoji:state.selectedEmoji });
+      const cardRows=valid.map((c,i)=>({ deck_id:newDeck.deck_id, front:c.front, back:c.back, hint:c.hint||null, sort_order:i }));
+      const newCards=await sbInsert('cards', cardRows);
+      state.decks.push({ ...newDeck, id:newDeck.deck_id, cards:(newCards||[]).map(c=>({...c, id:c.card_id})) });
+    }
+    showSyncDone(); showToast('저장 완료!'); showHome();
   } catch(e){ showToast('저장 실패: '+e.message); } finally { hideLoading(); }
 }
 async function deleteDeck() {
   if(!confirm('이 덱을 삭제할까요?')) return;
   showLoading('삭제 중...');
   try {
-    state.decks=state.decks.filter(d=>d.id!==state.editingDeckId);
-    delete state.progress[state.editingDeckId];
-    await saveAll(); showToast('삭제 완료!'); showHome();
+    // CASCADE로 cards, card_progress, study_sessions 자동 삭제
+    await sbDelete('decks', `deck_id=eq.${state.editingDeckId}`);
+    state.decks=state.decks.filter(d=>(d.deck_id||d.id)!==state.editingDeckId);
+    showToast('삭제 완료!'); showHome();
   } catch(e){ showToast('삭제 실패: '+e.message); } finally { hideLoading(); }
 }
 
@@ -1014,19 +1112,23 @@ async function saveEditCard() {
   const back = document.getElementById('edit-card-back').value.trim();
   const hint = document.getElementById('edit-card-hint').value.trim();
   if (!front || !back) { showToast('앞면과 뒷면을 입력해주세요'); return; }
-  // state.decks 에서도 업데이트 (별표모드면 card._deckId로 실제 덱 찾기)
-  const deckId = state._starredMode ? card._deckId : state.studyDeck.id;
-  const deck = state.decks.find(d => d.id === deckId);
+  const cardId = card.card_id||card.id;
+  const deckId = state._starredMode ? card._deckId : (state.studyDeck.deck_id||state.studyDeck.id);
+
+  // 로컬 state 업데이트
+  const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
   if (deck) {
-    const idx = deck.cards.findIndex(c => c.id === card.id);
+    const idx = deck.cards.findIndex(c => (c.card_id||c.id) === cardId);
     if (idx !== -1) { deck.cards[idx] = { ...deck.cards[idx], front, back, hint }; }
   }
-  // studyQueue도 업데이트
   state.studyQueue[state.studyIdx] = { ...card, front, back, hint };
   closeEditCardModal();
   renderStudyCard();
   showLoading('저장 중...');
-  try { await saveDecks(); showToast('저장 완료!'); } catch(e) { showToast('저장 실패: ' + e.message); } finally { hideLoading(); }
+  try {
+    await sbUpdate('cards', `card_id=eq.${cardId}`, { front, back, hint: hint||null });
+    showToast('저장 완료!');
+  } catch(e) { showToast('저장 실패: ' + e.message); } finally { hideLoading(); }
 }
 
 // ════════════════════════════════════════════════
@@ -1034,7 +1136,7 @@ async function saveEditCard() {
 // ════════════════════════════════════════════════
 // UTF-8 BOM(﻿) 포함 — Windows Excel / 갤럭시 한글 깨짐 방지
 function downloadCSV() {
-  const deck = state.decks.find(d => d.id === state.editingDeckId);
+  const deck = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
   if (!deck) return;
   const rows = deck.cards.map(c => {
     const esc = s => `"${String(s).replace(/"/g, '""')}"`;
