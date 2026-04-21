@@ -357,6 +357,54 @@ async function tryAutoLogin() {
 }
 
 // ════════════════════════════════════════════════
+// Supabase REST API 래퍼
+// ════════════════════════════════════════════════
+// anon key는 공개되어도 안전 (RLS가 데이터 보호)
+// Accept-Profile / Content-Profile 헤더로 flashcard 스키마 지정
+async function sbFetch(path, options = {}) {
+  const headers = {
+    'apikey': SUPA_KEY,
+    'Authorization': `Bearer ${state._supaToken || SUPA_KEY}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...options.headers,
+  };
+  const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+// SELECT
+function sbSelect(table, query = '') {
+  return sbFetch(`${table}?${query}`, { method: 'GET',
+    headers: { 'Accept-Profile': SUPA_SCHEMA } });
+}
+// INSERT (배열 or 단일 객체, return=representation)
+function sbInsert(table, body) {
+  return sbFetch(`${table}`, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Profile': SUPA_SCHEMA, 'Accept-Profile': SUPA_SCHEMA, 'Prefer': 'return=representation' } });
+}
+// UPDATE
+function sbUpdate(table, query, body) {
+  return sbFetch(`${table}?${query}`, { method: 'PATCH', body: JSON.stringify(body),
+    headers: { 'Content-Profile': SUPA_SCHEMA, 'Accept-Profile': SUPA_SCHEMA, 'Prefer': 'return=representation' } });
+}
+// UPSERT (중복 시 merge)
+function sbUpsert(table, body, onConflict) {
+  return sbFetch(`${table}`, { method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Profile': SUPA_SCHEMA, 'Accept-Profile': SUPA_SCHEMA,
+      'Prefer': 'resolution=merge-duplicates,return=representation', 'on-conflict': onConflict } });
+}
+// DELETE
+function sbDelete(table, query) {
+  return sbFetch(`${table}?${query}`, { method: 'DELETE',
+    headers: { 'Content-Profile': SUPA_SCHEMA, 'Accept-Profile': SUPA_SCHEMA } });
+}
+
+// ════════════════════════════════════════════════
 // 인증
 // ════════════════════════════════════════════════
 function signIn() { showLoading('Google 로그인 중...'); google.accounts.id.prompt(); }
