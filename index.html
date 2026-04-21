@@ -364,9 +364,11 @@ async function tryAutoLogin() {
 // anon key는 공개되어도 안전 (RLS가 데이터 보호)
 // Accept-Profile / Content-Profile 헤더로 flashcard 스키마 지정
 async function sbFetch(path, options = {}) {
+  // RLS 비활성화 상태 → anon key로 직접 인증
+  // (추후 Supabase Auth 연동 시 user JWT로 교체 예정)
   const headers = {
     'apikey': SUPA_KEY,
-    'Authorization': `Bearer ${state._supaToken || SUPA_KEY}`,
+    'Authorization': `Bearer ${SUPA_KEY}`,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     ...options.headers,
