@@ -1,0 +1,20 @@
+<div id="screen-settings" class="screen">
+  <div class="nav">
+    <button class="back-btn" onclick="showHome()">←</button>
+    <div><div class="nav-title">설정</div></div>
+  </div>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">테마</div>
+        <div class="setting-sub">화면 색상 모드</div>
+      </div>
+      <div class="theme-btns">
+        <button class="theme-btn" id="theme-btn-light"  onclick="setTheme('light')">☀️ 라이트</button>
+        <button class="theme-btn" id="theme-btn-dark"   onclick="setTheme('dark')">🌙 다크</button>
+        <button class="theme-btn" id="theme-btn-system" onclick="setTheme('system')">📱 시스템</button>
+      </div>
+    </div>
+  </div>
+  <button class="danger-btn" onclick="signOut()">로그아웃</button>
+</div>

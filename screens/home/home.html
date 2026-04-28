@@ -1,0 +1,21 @@
+<div id="screen-home" class="screen">
+  <div class="user-header">
+    <div class="user-info">
+      <div id="user-avatar-wrap"></div>
+      <div>
+        <div class="user-name" id="user-name-text"></div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.5px;margin-top:2px" id="version-label"></div>
+      </div>
+    </div>
+    <div class="header-btns">
+      <span id="sync-indicator" style="display:none;font-size:12px;color:#16a34a">✓ 동기화됨</span>
+      <button class="icon-btn" onclick="showSettings()">⚙️</button>
+      <button class="icon-btn" onclick="signOut()">로그아웃</button>
+    </div>
+  </div>
+  <div class="home-label">암기 카드</div>
+  <div class="home-title">내 덱 목록</div>
+  <div id="deck-list"></div>
+  <button class="add-deck-btn" id="study-starred-btn" onclick="startStarredStudy()" style="margin-bottom:8px">⭐ 별표 카드 모아 풀기</button>
+  <button class="add-deck-btn" onclick="showAddDeck()">+ 새 덱 만들기</button>
+</div>

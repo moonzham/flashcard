@@ -1,0 +1,41 @@
+<div id="screen-study" class="screen">
+  <div class="nav">
+    <button class="back-btn" onclick="exitStudy()">←</button>
+    <div style="flex:1">
+      <div class="nav-title" id="study-deck-name"></div>
+      <div class="nav-sub" id="study-progress-text"></div>
+    </div>
+    <button class="icon-btn" onclick="openEditCardModal()" style="font-size:11px;padding:4px 8px">✏️ 편집</button>
+  </div>
+  <div class="study-progress"><div class="study-progress-fill" id="study-progress-fill"></div></div>
+  <div class="flashcard" id="flashcard" onclick="flipCard()">
+    <div class="card-status status-none" id="card-status">
+      <div class="card-status-dot"></div>
+      <div class="card-status-label">미평가</div>
+    </div>
+    <button class="star-btn" id="star-btn" onclick="toggleStar(event)">⭐</button>
+    <div class="card-face" id="card-front-face">
+      <div class="card-label">문제</div>
+      <div class="card-text" id="card-front-text"></div>
+      <div class="card-tap">탭해서 정답 보기</div>
+    </div>
+    <div class="card-face" id="card-back-face" style="display:none">
+      <div class="card-label">문제</div>
+      <div class="card-text" id="card-back-question" style="opacity:0.45;margin-bottom:18px"></div>
+      <div style="width:100%;height:1px;background:var(--card-border);margin-bottom:18px"></div>
+      <div class="card-label">정답</div>
+      <div class="card-text" id="card-back-text"></div>
+      <div class="card-hint-text" id="card-hint-back"></div>
+    </div>
+  </div>
+  <button class="hint-btn" id="hint-btn" onclick="toggleHint()" style="display:none">💡 힌트 보기</button>
+  <div class="answer-btns" id="answer-btns" style="display:none">
+    <button class="answer-btn btn-dont"  onclick="answer('dont')">😅 몰랐어요</button>
+    <button class="answer-btn btn-maybe" onclick="answer('maybe')">💭 애매해요</button>
+    <button class="answer-btn btn-know"  onclick="answer('know')">✅ 알았어요</button>
+  </div>
+  <div class="nav-btns">
+    <button class="nav-btn" id="btn-prev" onclick="prevCard()">← 이전</button>
+    <button class="nav-btn" id="btn-next" onclick="nextCard()">다음 →</button>
+  </div>
+</div>
