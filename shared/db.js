@@ -152,3 +152,39 @@ function cleanOrphanProgress(deckId, validIds) {
     if (!validIds.includes(cid)) delete state.cardProgress[cid];
   });
 }
+
+// ════════════════════════════════════════════════
+// Supabase Storage (이미지 업로드/삭제)
+// ════════════════════════════════════════════════
+const SUPA_BUCKET = 'flashcard-images';
+
+// 이미지 업로드 → public URL 반환
+async function sbUploadImage(path, blob) {
+  const res = await fetch(`${SUPA_URL}/storage/v1/object/${SUPA_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': `Bearer ${SUPA_KEY}`,
+      'Content-Type': blob.type || 'image/jpeg',
+      'x-upsert': 'true',
+    },
+    body: blob,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Upload failed: HTTP ${res.status}`);
+  }
+  return `${SUPA_URL}/storage/v1/object/public/${SUPA_BUCKET}/${path}`;
+}
+
+// 이미지 삭제 (URL에서 path 추출)
+async function sbDeleteImage(url) {
+  const marker = `/object/public/${SUPA_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return;
+  const path = url.slice(idx + marker.length);
+  await fetch(`${SUPA_URL}/storage/v1/object/${SUPA_BUCKET}/${path}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+  });
+}

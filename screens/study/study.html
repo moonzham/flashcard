@@ -34,8 +34,103 @@
     <button class="answer-btn btn-maybe" onclick="answer('maybe')">💭 애매해요</button>
     <button class="answer-btn btn-know"  onclick="answer('know')">✅ 알았어요</button>
   </div>
+
+  <!-- ── 메모 영역 (카드 뒤집힌 후 표시) ── -->
+  <div id="memo-area" style="display:none;margin-bottom:80px">
+
+    <!-- 메모 없을 때 -->
+    <div id="memo-empty">
+      <button onclick="openMemoPanel()" style="width:100%;padding:12px;background:transparent;border:2px dashed var(--border);border-radius:12px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit">
+        📝 메모 추가
+      </button>
+    </div>
+
+    <!-- 메모 있을 때 -->
+    <div id="memo-filled" style="display:none">
+      <img id="memo-img" src="" alt="메모 이미지" style="width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin-bottom:4px;cursor:pointer" onclick="openMemoFull()">
+      <div style="display:flex;justify-content:flex-end">
+        <button onclick="deleteMemo()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;padding:2px 4px">✕ 삭제</button>
+      </div>
+    </div>
+
+    <!-- 입력방식 선택 패널 -->
+    <div id="memo-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:10px">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:700">메모 추가 방법 선택</span>
+        <button onclick="closeMemoPanel()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1">✕</button>
+      </div>
+      <div>
+        <label style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);cursor:pointer">
+          <input type="file" id="memo-file-input" accept="image/*" style="display:none" onchange="handleMemoFile(event)">
+          <span style="font-size:20px;width:28px;text-align:center">📁</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">파일 첨부</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">갤러리 · S펜 메모 포함</div>
+          </div>
+        </label>
+        <div id="memo-paste-row" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);cursor:pointer" onclick="handleMemoPaste()">
+          <span style="font-size:20px;width:28px;text-align:center">📋</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">클립보드 붙여넣기</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">PC 캡처도구 Ctrl+V</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer" onclick="openDrawModal()">
+          <span style="font-size:20px;width:28px;text-align:center">✏️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">직접 그리기</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">그림판 열기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="nav-btns">
     <button class="nav-btn" id="btn-prev" onclick="prevCard()">← 이전</button>
     <button class="nav-btn" id="btn-next" onclick="nextCard()">다음 →</button>
+  </div>
+</div>
+
+<!-- ── 그림판 모달 ── -->
+<div class="modal-overlay" id="draw-modal" style="display:none">
+  <div class="modal" style="max-width:420px;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+      <span style="font-size:15px;font-weight:700">직접 그리기</span>
+      <button onclick="closeDrawModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">✕</button>
+    </div>
+    <div style="padding:12px">
+      <canvas id="draw-canvas" style="width:100%;border-radius:10px;border:1px solid var(--border);display:block;touch-action:none;background:#ffffff"></canvas>
+    </div>
+    <div style="padding:0 12px 12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="draw-color-btn active" data-color="#111111" onclick="setDrawColor(this)" style="width:26px;height:26px;border-radius:50%;background:#111111;border:2px solid var(--accent);cursor:pointer;flex-shrink:0"></button>
+        <button class="draw-color-btn" data-color="#e53e3e" onclick="setDrawColor(this)" style="width:26px;height:26px;border-radius:50%;background:#e53e3e;border:2px solid transparent;cursor:pointer;flex-shrink:0"></button>
+        <button class="draw-color-btn" data-color="#2563eb" onclick="setDrawColor(this)" style="width:26px;height:26px;border-radius:50%;background:#2563eb;border:2px solid transparent;cursor:pointer;flex-shrink:0"></button>
+        <button class="draw-color-btn" data-color="#16a34a" onclick="setDrawColor(this)" style="width:26px;height:26px;border-radius:50%;background:#16a34a;border:2px solid transparent;cursor:pointer;flex-shrink:0"></button>
+        <button class="draw-color-btn" data-color="#d97706" onclick="setDrawColor(this)" style="width:26px;height:26px;border-radius:50%;background:#d97706;border:2px solid transparent;cursor:pointer;flex-shrink:0"></button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 2px"></div>
+        <button id="draw-eraser-btn" onclick="toggleDrawEraser()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit">지우개</button>
+        <button onclick="undoDraw()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit">↩ 되돌리기</button>
+        <button onclick="clearDraw()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--accent2);font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit">전체삭제</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0">굵기</span>
+        <input type="range" min="1" max="20" value="4" id="draw-size-slider" oninput="setDrawSize(this.value)" style="flex:1">
+        <span id="draw-size-label" style="font-size:11px;color:var(--muted);min-width:20px;text-align:right">4</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="closeDrawModal()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit">취소</button>
+        <button onclick="saveDrawing()" style="flex:2;padding:11px;background:var(--accent);border:none;border-radius:10px;color:var(--bg);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 메모 이미지 전체보기 모달 ── -->
+<div class="modal-overlay" id="memo-full-modal" style="display:none" onclick="closeMemoFull()">
+  <div style="max-width:480px;width:100%;padding:0 16px">
+    <img id="memo-full-img" src="" style="width:100%;border-radius:14px;display:block">
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:#ffffff99">탭해서 닫기</div>
   </div>
 </div>
