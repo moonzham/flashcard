@@ -32,7 +32,15 @@ async function tryAutoLogin() {
 
 function signIn() {
   showLoading('Google 로그인 중...');
-  google.accounts.id.prompt();
+  google.accounts.id.prompt((notification) => {
+    // 모바일 크롬에서 One Tap 팝업이 차단되면 콜백이 안 옴
+    // isNotDisplayed: 팝업 자체가 안 뜸
+    // isSkippedMoment: 사용자가 닫았거나 자동으로 스킵됨
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      hideLoading();
+      showLoginScreen();
+    }
+  });
 }
 
 function signOut() {
