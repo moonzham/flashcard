@@ -160,7 +160,8 @@ function flipCard() {
     renderMemoArea();
   } else {
     const card = state.studyQueue[state.studyIdx];
-    if (card && card.hint) { hb.style.display = 'block'; hb.textContent = state.studyShowHint ? `💡 ${card.hint}` : '💡 힌트 보기'; }
+    state.studyShowHint = false;
+    if (card && card.hint) { hb.style.display = 'block'; hb.textContent = '💡 힌트 보기'; }
     else { hb.style.display = 'none'; }
     document.getElementById('memo-area').style.display = 'none';
   }
