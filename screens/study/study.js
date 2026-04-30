@@ -154,9 +154,16 @@ function flipCard() {
   document.getElementById('card-front-face').style.display = state.studyFlipped ? 'none' : 'flex';
   document.getElementById('card-back-face').style.display  = state.studyFlipped ? 'flex' : 'none';
   document.getElementById('answer-btns').style.display     = state.studyFlipped ? 'flex' : 'none';
-  document.getElementById('hint-btn').style.display = 'none';
-  if (state.studyFlipped) renderMemoArea();
-  else document.getElementById('memo-area').style.display = 'none';
+  const hb = document.getElementById('hint-btn');
+  if (state.studyFlipped) {
+    hb.style.display = 'none';
+    renderMemoArea();
+  } else {
+    const card = state.studyQueue[state.studyIdx];
+    if (card && card.hint) { hb.style.display = 'block'; hb.textContent = state.studyShowHint ? `💡 ${card.hint}` : '💡 힌트 보기'; }
+    else { hb.style.display = 'none'; }
+    document.getElementById('memo-area').style.display = 'none';
+  }
 }
 function prevCard() { if (state.studyIdx > 0) { state.studyIdx--; renderStudyCard(); } }
 function nextCard() { if (state.studyIdx < state.studyQueue.length - 1) { state.studyIdx++; renderStudyCard(); } }
