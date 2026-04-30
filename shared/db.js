@@ -65,6 +65,13 @@ async function loadAllData() {
     } else {
       state.decks = decks.map(d => ({ ...d, id: d.deck_id, cards: [] }));
 
+      // 카드 전체 로드 (홈 카드 수 표시용)
+      const allCards = await sbSelect('cards', `deck_id=in.(${state.decks.map(d => d.deck_id).join(',')})&order=sort_order.asc`);
+      (allCards || []).forEach(c => {
+        const deck = state.decks.find(d => d.deck_id === c.deck_id);
+        if (deck) deck.cards.push({ ...c, id: c.card_id });
+      });
+
       // card_progress 인메모리 캐시 로드
       const progress = await sbSelect('card_progress', `user_id=eq.${uid}`);
       state.cardProgress = {};
