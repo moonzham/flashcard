@@ -248,10 +248,12 @@ function renderMemoArea() {
   document.getElementById('memo-panel').style.display = 'none';
   closeMemoPanel();
 
-  // 모바일 감지 → 클립보드 행 숨김
+  // 모바일 감지 → 클립보드 숨김 / 카메라 표시
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const pasteRow = document.getElementById('memo-paste-row');
   if (pasteRow) pasteRow.style.display = isMobile ? 'none' : 'flex';
+  const cameraRow = document.getElementById('memo-camera-row');
+  if (cameraRow) cameraRow.style.display = isMobile ? 'flex' : 'none';
 
   if (imageUrl) {
     document.getElementById('memo-empty').style.display = 'none';
@@ -366,7 +368,7 @@ function openMemoFull() {
 }
 function closeMemoFull() { document.getElementById('memo-full-modal').style.display = 'none'; }
 
-// ── 이미지 리사이즈 (canvas) ──
+// ── 이미지 리사이즈 + 400KB 이하 압축 ──
 function resizeImage(file, maxWidth) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -379,7 +381,22 @@ function resizeImage(file, maxWidth) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+
+      // 400KB 이하가 될 때까지 품질 낮춰가며 재압축
+      const MAX_BYTES = 400 * 1024;
+      let quality = 0.85;
+      const tryCompress = () => {
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(blob); return; }
+          if (blob.size <= MAX_BYTES || quality <= 0.3) {
+            resolve(blob);
+          } else {
+            quality = Math.round((quality - 0.1) * 10) / 10;
+            tryCompress();
+          }
+        }, 'image/jpeg', quality);
+      };
+      tryCompress();
     };
     img.src = url;
   });
