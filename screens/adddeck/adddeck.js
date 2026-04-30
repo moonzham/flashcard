@@ -102,6 +102,12 @@ async function deleteDeck() {
   if (!confirm('이 덱을 삭제할까요?')) return;
   showLoading('삭제 중...');
   try {
+    // 카드에 첨부된 이미지 스토리지에서 삭제
+    const deck = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
+    if (deck && deck.cards && deck.cards.length > 0) {
+      const imageUrls = deck.cards.map(c => c.image_url).filter(Boolean);
+      await Promise.allSettled(imageUrls.map(url => sbDeleteImage(url)));
+    }
     await sbDelete('decks', `deck_id=eq.${state.editingDeckId}`);
     state.decks = state.decks.filter(d => (d.deck_id||d.id) !== state.editingDeckId);
     showToast('삭제 완료!'); showHome();
