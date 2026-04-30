@@ -2,7 +2,6 @@
 // 상수
 // ════════════════════════════════════════════════
 const CLIENT_ID = '603081180385-5dmfebn8mm239lod4solqkig2molj886.apps.googleusercontent.com';
-const APP_VERSION = 'ver.260429.01';
 const EMOJIS = ['📚','🇺🇸','🇯🇵','🇨🇳','🔢','🧪','🎵','💼','📝','🌏','⚙️','🏥'];
 
 // ── Supabase 연결 정보 ──
