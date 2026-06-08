@@ -39,9 +39,9 @@ function sbUpdate(table, query, body) {
 }
 // UPSERT (중복 시 merge)
 function sbUpsert(table, body, onConflict) {
-  return sbFetch(`${table}`, { method: 'POST', body: JSON.stringify(body),
+  return sbFetch(`${table}?on_conflict=${onConflict}`, { method: 'POST', body: JSON.stringify(body),
     headers: { 'Content-Profile': SUPA_SCHEMA, 'Accept-Profile': SUPA_SCHEMA,
-      'Prefer': 'resolution=merge-duplicates,return=representation', 'on-conflict': onConflict } });
+      'Prefer': 'resolution=merge-duplicates,return=representation' } });
 }
 // DELETE
 function sbDelete(table, query) {
