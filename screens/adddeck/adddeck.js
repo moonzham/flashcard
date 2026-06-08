@@ -79,14 +79,43 @@ async function saveDeck() {
     const uid = state.user.sub;
     if (state.editingDeckId) {
       await sbUpdate('decks', `deck_id=eq.${state.editingDeckId}`, { name, emoji: state.selectedEmoji });
-      await sbDelete('cards', `deck_id=eq.${state.editingDeckId}`);
-      const cardRows = valid.map((c, i) => ({ deck_id: state.editingDeckId, front: c.front, back: c.back, hint: c.hint||null, sort_order: i }));
-      const newCards = await sbInsert('cards', cardRows);
+
+      // 기존 카드(card_id 있음) vs 새 카드(card_id 없음) 분리
+      const existingCards = valid.filter(c => c.card_id || (c.id && !String(c.id).startsWith('card_')));
+      const newInputCards  = valid.filter(c => !c.card_id && (!c.id || String(c.id).startsWith('card_')));
+
+      // 기존 카드 UPDATE (card_id 유지 → progress 보존)
+      await Promise.all(existingCards.map(c => {
+        const cardId = c.card_id || c.id;
+        return sbUpdate('cards', `card_id=eq.${cardId}`, { front: c.front, back: c.back, hint: c.hint||null, sort_order: valid.indexOf(c) });
+      }));
+
+      // 새 카드 INSERT
+      let inserted = [];
+      if (newInputCards.length > 0) {
+        const cardRows = newInputCards.map(c => ({ deck_id: state.editingDeckId, front: c.front, back: c.back, hint: c.hint||null, sort_order: valid.indexOf(c) }));
+        inserted = await sbInsert('cards', cardRows) || [];
+      }
+
+      // 삭제된 카드 처리 (편집 전 카드 중 valid에 없는 것)
+      const deck = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
+      const prevCardIds = (deck?.cards || []).map(c => c.card_id||c.id);
+      const keptCardIds = existingCards.map(c => c.card_id||c.id);
+      const deletedCardIds = prevCardIds.filter(id => !keptCardIds.includes(id));
+      if (deletedCardIds.length > 0) {
+        await sbDelete('cards', `card_id=in.(${deletedCardIds.join(',')})`);
+        await sbDelete('card_progress', `card_id=in.(${deletedCardIds.join(',')})`).catch(() => {});
+        deletedCardIds.forEach(cid => delete state.cardProgress[cid]);
+      }
+
+      // 로컬 state 업데이트
       const idx = state.decks.findIndex(d => (d.deck_id||d.id) === state.editingDeckId);
       if (idx !== -1) {
-        const updatedCards = (newCards||[]).map(c => ({...c, id: c.card_id}));
+        const updatedCards = [
+          ...existingCards.map(c => ({ ...c, card_id: c.card_id||c.id, id: c.card_id||c.id })),
+          ...inserted.map(c => ({ ...c, id: c.card_id }))
+        ].sort((a, b) => (a.sort_order||0) - (b.sort_order||0));
         state.decks[idx] = { ...state.decks[idx], name, emoji: state.selectedEmoji, cards: updatedCards };
-        cleanOrphanProgress(state.editingDeckId, updatedCards.map(c => c.card_id));
       }
     } else {
       const [newDeck] = await sbInsert('decks', { user_id: uid, name, emoji: state.selectedEmoji });
@@ -107,6 +136,13 @@ async function deleteDeck() {
     if (deck && deck.cards && deck.cards.length > 0) {
       const imageUrls = deck.cards.map(c => c.image_url).filter(Boolean);
       await Promise.allSettled(imageUrls.map(url => sbDeleteImage(url)));
+    }
+    // 카드 progress DB 삭제
+    if (deck && deck.cards && deck.cards.length > 0) {
+      const cardIds = deck.cards.map(c => c.card_id||c.id).filter(Boolean);
+      if (cardIds.length > 0) {
+        await sbDelete('card_progress', `card_id=in.(${cardIds.join(',')})`).catch(() => {});
+      }
     }
     await sbDelete('decks', `deck_id=eq.${state.editingDeckId}`);
     state.decks = state.decks.filter(d => (d.deck_id||d.id) !== state.editingDeckId);

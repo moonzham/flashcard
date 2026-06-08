@@ -153,11 +153,24 @@ async function saveSession(deckId, know, maybe, dont, completed) {
   });
 }
 
-// 덱 편집 후 삭제된 카드의 progress 캐시 정리
-function cleanOrphanProgress(deckId, validIds) {
-  Object.keys(state.cardProgress).forEach(cid => {
-    if (!validIds.includes(cid)) delete state.cardProgress[cid];
-  });
+// 덱 편집 후 삭제된 카드의 progress 정리 (로컬 + DB)
+// validIds : 편집 후 살아남은 card_id 배열
+// deckId 소속 카드만 대상으로 정리 (다른 덱 progress 건드리지 않음)
+async function cleanOrphanProgress(deckId, validIds) {
+  const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
+  if (!deck) return;
+
+  // 이 덱에 속했던 카드 중 validIds에 없는 것 = 삭제된 카드
+  const allDeckCardIds = (deck.cards || []).map(c => c.card_id||c.id);
+  const orphanIds = allDeckCardIds.filter(cid => !validIds.includes(cid));
+
+  // 로컬 캐시 정리
+  orphanIds.forEach(cid => delete state.cardProgress[cid]);
+
+  // DB 정리
+  if (orphanIds.length > 0) {
+    await sbDelete('card_progress', `card_id=in.(${orphanIds.join(',')})`).catch(() => {});
+  }
 }
 
 // ════════════════════════════════════════════════
