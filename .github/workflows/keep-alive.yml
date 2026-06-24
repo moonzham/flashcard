@@ -11,11 +11,11 @@ jobs:
     steps:
       - name: Ping Supabase (INSERT)
         run: |
-          curl -s \
+          curl -s -i \
             -X POST \
             -H "apikey: ${{ secrets.SUPA_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPA_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{}' \
             "https://wyujirkoyzhyetrpyyhx.supabase.co/rest/v1/ping" \
-            -o /dev/null -w "Status: %{http_code}\n"
+            -w "\nStatus: %{http_code}\n"
