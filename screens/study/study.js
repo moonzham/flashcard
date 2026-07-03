@@ -10,7 +10,10 @@ async function tryStartStudy(deckId) {
     hideLoading();
   }
   if (deck && deck.pending_session) {
-    const p = deck.pending_session, done = p.results.know + p.results.maybe + p.results.dont, total = done + p.remainingIds.length;
+    const p = deck.pending_session, done = p.results.know + p.results.maybe + p.results.dont;
+    // 이동 등으로 이 덱에서 사라진 카드는 실제 남은 개수 계산에서 제외
+    const actualRemaining = p.remainingIds.filter(id => deck.cards.some(c => (c.card_id||c.id) === id));
+    const total = done + actualRemaining.length;
     document.getElementById('resume-modal-sub').textContent = `${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
     document.getElementById('resume-modal').style.display = 'flex';
   } else {
