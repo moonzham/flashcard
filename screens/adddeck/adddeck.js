@@ -9,6 +9,12 @@ function showAddDeck(deckId) {
   document.getElementById('csv-text').textContent = '파일 선택 (CSV 또는 TXT)';
   document.getElementById('csv-text').style.color = 'var(--muted)';
   document.getElementById('csv-input').value = '';
+  // 카드 이동 모드 초기화 (덱을 다른 걸로 옮겨 다니거나 새로 진입할 때 이전 상태 안 남게)
+  _cardMoveMode = false;
+  document.getElementById('card-move-bar').style.display = 'none';
+  const editBtn = document.getElementById('card-edit-toggle-btn');
+  editBtn.textContent = '이동 편집';
+  editBtn.style.display = (deckId && state.decks.length > 1) ? 'inline-block' : 'none';
   const emojiRow = document.getElementById('emoji-row'); emojiRow.innerHTML = '';
   EMOJIS.forEach(e => {
     const btn = document.createElement('button');
@@ -40,12 +46,20 @@ function showAddDeck(deckId) {
 
 function editDeck(id) { showAddDeck(id); }
 
+// ── 카드 이동 모드 ──
+let _cardMoveMode = false;
+
 function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
     const memoIcon = card.image_url ? ' 🖼️' : '';
-    div.innerHTML = `<div class="card-item-header"><span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${state.cardInputs.length > 1 ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : ''}</div>
+    const moveCheckbox = !_cardMoveMode ? '' :
+      (card.card_id
+        ? `<input type="checkbox" ${card.checked ? 'checked' : ''} onchange="toggleCardCheck(${i})" style="width:18px;height:18px;margin-right:8px;vertical-align:middle;accent-color:var(--accent)">`
+        : `<span style="font-size:11px;color:var(--muted);margin-right:8px">(저장 후 이동 가능)</span>`);
+    const removeBtn = (!_cardMoveMode && state.cardInputs.length > 1) ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : '';
+    div.innerHTML = `<div class="card-item-header">${moveCheckbox}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${removeBtn}</div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
@@ -54,6 +68,76 @@ function renderCardInputs() {
 }
 function addCardInput() { state.cardInputs.push({id: 'card_' + Date.now() + Math.random(), front: '', back: '', hint: ''}); renderCardInputs(); }
 function removeCardInput(i) { state.cardInputs.splice(i, 1); renderCardInputs(); }
+
+// 이동 편집 모드 토글
+function toggleCardMoveMode() {
+  _cardMoveMode = !_cardMoveMode;
+  document.getElementById('card-edit-toggle-btn').textContent = _cardMoveMode ? '✕ 취소' : '이동 편집';
+  document.getElementById('card-move-bar').style.display = _cardMoveMode ? 'block' : 'none';
+  if (_cardMoveMode) populateMoveTargetSelect();
+  state.cardInputs.forEach(c => c.checked = false);
+  renderCardInputs();
+  updateMoveSelectedCount();
+}
+
+// 이동 대상 덱 셀렉트박스 채우기 (현재 편집 중인 덱 자신은 제외)
+function populateMoveTargetSelect() {
+  const sel = document.getElementById('move-target-deck'); sel.innerHTML = '';
+  state.decks.filter(d => (d.deck_id||d.id) !== state.editingDeckId).forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.deck_id||d.id;
+    opt.textContent = `${d.emoji} ${d.name}`;
+    sel.appendChild(opt);
+  });
+}
+
+function toggleCardCheck(i) { state.cardInputs[i].checked = !state.cardInputs[i].checked; updateMoveSelectedCount(); }
+function updateMoveSelectedCount() {
+  const el = document.getElementById('move-selected-count');
+  if (el) el.textContent = state.cardInputs.filter(c => c.checked).length;
+}
+
+// 이동 버튼 클릭 → 재확인 후 실제 이동 실행
+function requestMoveCards() {
+  const selected = state.cardInputs.filter(c => c.checked && c.card_id);
+  if (!selected.length) { alert('이동할 카드를 선택해주세요'); return; }
+  const targetId = document.getElementById('move-target-deck').value;
+  const targetDeck = state.decks.find(d => (d.deck_id||d.id) === targetId);
+  if (!targetDeck) { alert('이동할 덱을 선택해주세요'); return; }
+  if (!confirm(`${selected.length}개의 카드를 "${targetDeck.name}" 덱으로 이동할까요?`)) return;
+  moveCardsToDeck(selected, targetId);
+}
+
+// 실제 카드 이동: cards.deck_id / card_progress.deck_id 갱신, sort_order 재배치, 로컬 state 동기화
+async function moveCardsToDeck(selectedCards, targetDeckId) {
+  showLoading('카드 이동 중...');
+  try {
+    const sourceDeckId = state.editingDeckId;
+    const targetDeck = state.decks.find(d => (d.deck_id||d.id) === targetDeckId);
+    const startOrder = (targetDeck.cards || []).length;
+
+    await Promise.all(selectedCards.map((c, idx) =>
+      sbUpdate('cards', `card_id=eq.${c.card_id}`, { deck_id: targetDeckId, sort_order: startOrder + idx })
+    ));
+    const cardIds = selectedCards.map(c => c.card_id);
+    await sbUpdate('card_progress', `card_id=in.(${cardIds.join(',')})`, { deck_id: targetDeckId }).catch(() => {});
+
+    // 로컬 state 갱신 — 원래 덱에서 제거, 새 덱에 추가
+    const sourceDeck = state.decks.find(d => (d.deck_id||d.id) === sourceDeckId);
+    if (sourceDeck) sourceDeck.cards = (sourceDeck.cards||[]).filter(c => !cardIds.includes(c.card_id||c.id));
+    targetDeck.cards = targetDeck.cards || [];
+    selectedCards.forEach((c, idx) => {
+      const { checked, ...clean } = c;
+      targetDeck.cards.push({ ...clean, deck_id: targetDeckId, sort_order: startOrder + idx, id: c.card_id });
+    });
+    state.cardInputs = state.cardInputs.filter(c => !cardIds.includes(c.card_id));
+
+    showSyncDone(); showToast(`${selectedCards.length}개 카드 이동 완료!`);
+    toggleCardMoveMode(); // 이동 모드 종료 + 화면 갱신
+  } catch(e) {
+    showToast('이동 실패: ' + e.message);
+  } finally { hideLoading(); }
+}
 
 // 카드 번호 클릭 → 해당 카드로 이동해서 메모(이미지) 추가/확인
 // 저장 안 된 변경사항이 있으면 막지 않고, 저장할지 확인 후 저장까지 마치고 이동

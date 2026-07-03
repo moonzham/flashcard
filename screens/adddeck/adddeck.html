@@ -14,7 +14,15 @@
     <div style="color:var(--muted);font-size:13px" id="csv-text">파일 선택 (CSV 또는 TXT)</div>
     <div style="color:var(--muted);font-size:11px;margin-top:4px">형식: 앞면, 뒷면, 힌트(선택)</div>
   </div>
-  <label class="form-label">카드 직접 입력</label>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <label class="form-label" style="margin-bottom:0">카드 직접 입력</label>
+    <button class="icon-btn" id="card-edit-toggle-btn" onclick="toggleCardMoveMode()" style="font-size:11px;padding:4px 10px;display:none">이동 편집</button>
+  </div>
+  <div id="card-move-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">이동할 덱을 선택하세요</div>
+    <select id="move-target-deck" class="form-input" style="margin-bottom:10px"></select>
+    <button class="primary-btn" onclick="requestMoveCards()" style="padding:11px">선택한 카드 이동 (<span id="move-selected-count">0</span>개)</button>
+  </div>
   <div id="card-inputs"></div>
   <button class="add-card-btn" onclick="addCardInput()">+ 카드 추가</button>
   <button class="primary-btn" onclick="saveDeck()">저장하기</button>
