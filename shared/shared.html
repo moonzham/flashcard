@@ -60,6 +60,13 @@
         <span id="filter-none-count" style="color:var(--muted);font-size:12px"></span>
       </div>
     </div>
+    <div style="margin-bottom:16px">
+      <div class="modal-sub" style="margin-bottom:8px">순서를 선택하세요</div>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="order-btn-sequential" onclick="setFilterOrder('sequential')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🔢 순서대로</button>
+        <button type="button" id="order-btn-random" onclick="setFilterOrder('random')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🔀 랜덤</button>
+      </div>
+    </div>
     <div id="filter-total-info" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px"></div>
     <div class="modal-btns">
       <button class="modal-btn modal-btn-secondary" onclick="closeFilterModal()">취소</button>

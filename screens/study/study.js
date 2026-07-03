@@ -14,13 +14,27 @@ async function tryStartStudy(deckId) {
     document.getElementById('resume-modal-sub').textContent = `${p.date}에 시작한 학습이 있어요\n${done} / ${total} 완료된 상태예요`;
     document.getElementById('resume-modal').style.display = 'flex';
   } else {
-    const hasHistory = deck && deck.cards.some(c => (state.cardProgress[c.card_id||c.id]||{}).status);
-    if (hasHistory) { openFilterModal(deckId); } else { startFresh(deckId); }
+    openFilterModal(deckId);
   }
 }
 
 // ── 필터 모달 ──
 let _currentFilterDeck = null;
+let _currentFilterOrder = 'sequential'; // 'sequential' | 'random'
+function setFilterOrder(order) {
+  _currentFilterOrder = order;
+  updateFilterOrderUI();
+}
+function updateFilterOrderUI() {
+  const seq = document.getElementById('order-btn-sequential');
+  const rnd = document.getElementById('order-btn-random');
+  if (!seq || !rnd) return;
+  const active = { borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--accent-subtle)' };
+  const inactive = { borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--bg)' };
+  const apply = (el, s) => { el.style.borderColor = s.borderColor; el.style.color = s.color; el.style.background = s.background; };
+  apply(seq, _currentFilterOrder === 'sequential' ? active : inactive);
+  apply(rnd, _currentFilterOrder === 'random' ? active : inactive);
+}
 function toggleFilterOpt(key) {
   const cb = document.getElementById('filter-' + key);
   cb.checked = !cb.checked;
@@ -46,6 +60,8 @@ function openFilterModal(deckId) {
   document.getElementById('filter-none-count').textContent  = counts.none  + '장';
   _setFilterCheck('know', counts.know > 0); _setFilterCheck('maybe', counts.maybe > 0);
   _setFilterCheck('dont', counts.dont > 0); _setFilterCheck('none', counts.none > 0);
+  _currentFilterOrder = (deck.total_sessions >= 1) ? 'random' : 'sequential';
+  updateFilterOrderUI();
   updateFilterTotal(deck);
   document.getElementById('filter-modal').style.display = 'flex';
 }
@@ -75,7 +91,7 @@ function startWithFilter() {
   deck.pending_session = null; saveDeckMeta(deck.deck_id||deck.id, {pending_session: null});
   state.studyDeck = deck;
   const cards = [...filtered];
-  state.studyQueue = (deck.total_sessions >= 1) ? cards.sort(() => Math.random() - .5) : cards;
+  state.studyQueue = (_currentFilterOrder === 'random') ? cards.sort(() => Math.random() - .5) : cards;
   state.studyIdx = 0; state.studyResults = {know:0, maybe:0, dont:0}; state.sessionAnswers = {};
   document.getElementById('study-deck-name').textContent = deck.name;
   showScreen('study'); renderStudyCard();
