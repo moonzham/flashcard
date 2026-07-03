@@ -44,7 +44,8 @@ function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
-    div.innerHTML = `<div class="card-item-header"><span class="card-item-num">카드 ${i+1}</span>${state.cardInputs.length > 1 ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : ''}</div>
+    const memoIcon = card.image_url ? ' 🖼️' : '';
+    div.innerHTML = `<div class="card-item-header"><span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${state.cardInputs.length > 1 ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : ''}</div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
@@ -53,6 +54,28 @@ function renderCardInputs() {
 }
 function addCardInput() { state.cardInputs.push({id: 'card_' + Date.now() + Math.random(), front: '', back: '', hint: ''}); renderCardInputs(); }
 function removeCardInput(i) { state.cardInputs.splice(i, 1); renderCardInputs(); }
+
+// 카드 번호 클릭 → 해당 카드로 이동해서 메모(이미지) 추가/확인
+// 아직 DB에 저장 안 된 카드(card_id 없음)는 먼저 저장하라고 안내 (신규 카드 임시 업로드 방지)
+function openCardMemo(i) {
+  const card = state.cardInputs[i];
+  if (!card.card_id) { alert('먼저 저장 버튼을 눌러 카드를 저장한 후 메모를 추가할 수 있어요'); return; }
+  const deckId = state.editingDeckId;
+  const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
+  if (!deck) return;
+  const liveCard = deck.cards.find(c => (c.card_id||c.id) === card.card_id) || card;
+  state.studyDeck = deck;
+  state.studyQueue = [{ ...liveCard, id: liveCard.card_id||liveCard.id }];
+  state.studyIdx = 0;
+  state.studyResults = {know:0, maybe:0, dont:0};
+  state.sessionAnswers = {};
+  state._memoOnlyMode = true;       // 메모 전용 모드 (학습 통계/이어하기에 영향 안 주도록 방어)
+  state._returnToAddDeck = deckId;  // 뒤로가기 시 편집화면으로 복귀
+  document.getElementById('study-deck-name').textContent = deck.name;
+  showScreen('study');
+  renderStudyCard();
+  flipCard();  // 바로 뒷면(정답+메모 영역) 오픈
+}
 
 function handleCSV(e) {
   const file = e.target.files[0]; if (!file) return;

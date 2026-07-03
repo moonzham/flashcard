@@ -109,12 +109,20 @@ function resumeStudy() {
   showScreen('study'); renderStudyCard();
 }
 function exitStudy() {
-  if (!state._starredMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
+  // 메모 전용 모드(덱 편집화면에서 카드 번호 클릭으로 진입)는 임시 세션이므로
+  // pending_session/이어하기 데이터를 남기지 않음
+  if (!state._starredMode && !state._memoOnlyMode && state.studyDeck && state.studyIdx < state.studyQueue.length) {
     const today = new Date().toISOString().split('T')[0];
     const pending = { date: today, remainingIds: state.studyQueue.slice(state.studyIdx).map(c => c.id), results: {...state.studyResults}, sessionAnswers: {...state.sessionAnswers} };
     saveDeckMeta(state.studyDeck.deck_id || state.studyDeck.id, { pending_session: pending, last_studied: today });
   }
   state._starredMode = false;
+  if (state._memoOnlyMode) {
+    state._memoOnlyMode = false;
+    const returnId = state._returnToAddDeck;
+    state._returnToAddDeck = null;
+    if (returnId) { showAddDeck(returnId); return; }
+  }
   showHome();
 }
 
@@ -150,9 +158,6 @@ function renderStudyCard() {
   document.getElementById('btn-next').disabled = (i >= q.length - 1);
 }
 function flipCard() {
-  // 텍스트 드래그로 선택 중이었으면 뒤집기 무시 (복사 동작과 충돌 방지)
-  const sel = window.getSelection();
-  if (sel && sel.toString().length > 0) return;
   state.studyFlipped = !state.studyFlipped;
   document.getElementById('card-front-face').style.display = state.studyFlipped ? 'none' : 'flex';
   document.getElementById('card-back-face').style.display  = state.studyFlipped ? 'flex' : 'none';
@@ -195,7 +200,7 @@ function answer(type) {
   if (prev) state.studyResults[prev] = Math.max(0, state.studyResults[prev] - 1);
   state.sessionAnswers[cardId] = type;
   state.studyResults[type]++; state.studyIdx++;
-  if (!state._starredMode) {
+  if (!state._starredMode && !state._memoOnlyMode) {
     const today = new Date().toISOString().split('T')[0];
     if (state.studyIdx < state.studyQueue.length) {
       const pending = { date: today, remainingIds: state.studyQueue.slice(state.studyIdx).map(c => c.card_id||c.id), results: {...state.studyResults}, sessionAnswers: {...state.sessionAnswers} };
@@ -207,7 +212,7 @@ function answer(type) {
   renderStudyCard();
 }
 function showDone() {
-  if (!state._starredMode) {
+  if (!state._starredMode && !state._memoOnlyMode) {
     const today = new Date().toISOString().split('T')[0];
     const deckId = state.studyDeck.deck_id || state.studyDeck.id;
     const newTotal = (state.studyDeck.total_sessions||0) + 1;
