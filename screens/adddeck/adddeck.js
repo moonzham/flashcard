@@ -56,14 +56,55 @@ function addCardInput() { state.cardInputs.push({id: 'card_' + Date.now() + Math
 function removeCardInput(i) { state.cardInputs.splice(i, 1); renderCardInputs(); }
 
 // 카드 번호 클릭 → 해당 카드로 이동해서 메모(이미지) 추가/확인
-// 아직 DB에 저장 안 된 카드(card_id 없음)는 먼저 저장하라고 안내 (신규 카드 임시 업로드 방지)
+// 저장 안 된 변경사항이 있으면 막지 않고, 저장할지 확인 후 저장까지 마치고 이동
 function openCardMemo(i) {
   const card = state.cardInputs[i];
-  if (!card.card_id) { alert('먼저 저장 버튼을 눌러 카드를 저장한 후 메모를 추가할 수 있어요'); return; }
+  if (!card.front.trim() || !card.back.trim()) { alert('앞면과 뒷면을 먼저 입력해주세요'); return; }
+
+  if (hasUnsavedDeckChanges()) {
+    const wantSave = confirm('저장되지 않은 변경사항이 있어요.\n저장한 후 이 카드로 이동할까요?');
+    if (!wantSave) return;
+
+    // 저장 후에도 이 카드를 다시 찾을 수 있도록, 저장 시 부여될 sort_order(=valid 배열 내 순서) 기록
+    const validBeforeSave = state.cardInputs.filter(c => c.front.trim() && c.back.trim());
+    const targetSortOrder = validBeforeSave.indexOf(card);
+
+    saveDeck(() => {
+      const deck = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
+      const savedCard = deck && deck.cards.find(c => (c.sort_order||0) === targetSortOrder);
+      if (savedCard) { goToCardMemo(savedCard); }
+      else { showToast('카드를 찾지 못했어요'); showAddDeck(state.editingDeckId); }
+    });
+    return;
+  }
+
+  goToCardMemo(card);
+}
+
+// 현재 입력 내용이 DB에 저장된 상태와 다른지 검사 (덱 이름/이모지/카드 목록 전체 비교)
+function hasUnsavedDeckChanges() {
+  if (!state.editingDeckId) return true; // 아직 생성 전인 새 덱
+  const deck = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
+  if (!deck) return true;
+  const name = document.getElementById('deck-name-input').value.trim();
+  if (name !== deck.name) return true;
+  if (state.selectedEmoji !== deck.emoji) return true;
+  const savedCards = deck.cards || [];
+  if (state.cardInputs.length !== savedCards.length) return true;
+  for (const c of state.cardInputs) {
+    if (!c.card_id) return true;
+    const orig = savedCards.find(o => (o.card_id||o.id) === c.card_id);
+    if (!orig) return true;
+    if (c.front !== orig.front || c.back !== orig.back || (c.hint||'') !== (orig.hint||'')) return true;
+  }
+  return false;
+}
+
+// 저장 완료된 카드 객체를 받아 학습화면(메모 전용 모드)으로 이동
+function goToCardMemo(liveCard) {
   const deckId = state.editingDeckId;
   const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
   if (!deck) return;
-  const liveCard = deck.cards.find(c => (c.card_id||c.id) === card.card_id) || card;
   state.studyDeck = deck;
   state.studyQueue = [{ ...liveCard, id: liveCard.card_id||liveCard.id }];
   state.studyIdx = 0;
@@ -92,7 +133,7 @@ function handleCSV(e) {
   reader.readAsText(file, 'UTF-8');
 }
 
-async function saveDeck() {
+async function saveDeck(afterSave) {
   const name = document.getElementById('deck-name-input').value.trim();
   if (!name) { alert('덱 이름을 입력해주세요'); return; }
   const valid = state.cardInputs.filter(c => c.front.trim() && c.back.trim());
@@ -145,8 +186,10 @@ async function saveDeck() {
       const cardRows = valid.map((c, i) => ({ deck_id: newDeck.deck_id, front: c.front, back: c.back, hint: c.hint||null, sort_order: i }));
       const newCards = await sbInsert('cards', cardRows);
       state.decks.push({ ...newDeck, id: newDeck.deck_id, cards: (newCards||[]).map(c => ({...c, id: c.card_id})) });
+      state.editingDeckId = newDeck.deck_id; // 후속 작업(메모 이동 등)을 위해 편집 대상으로 전환
     }
-    showSyncDone(); showToast('저장 완료!'); showHome();
+    showSyncDone(); showToast('저장 완료!');
+    if (typeof afterSave === 'function') { afterSave(); } else { showHome(); }
   } catch(e) { showToast('저장 실패: ' + e.message); } finally { hideLoading(); }
 }
 
