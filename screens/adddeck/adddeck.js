@@ -53,6 +53,7 @@ let _cardSortable = null;
 
 function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
+  const statusLabelMap = { know: ['status-know', '✅ 알았어요'], maybe: ['status-maybe', '💭 애매해요'], dont: ['status-dont', '😅 몰랐어요'], none: ['status-none', '❓ 미평가'] };
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
     const memoIcon = card.image_url ? ' 🖼️' : '';
@@ -62,8 +63,14 @@ function renderCardInputs() {
           ? `<input type="checkbox" ${card.checked ? 'checked' : ''} onchange="toggleCardCheck(${i})" style="width:18px;height:18px;margin-right:8px;vertical-align:middle;accent-color:var(--accent)">`
           : `<span style="font-size:11px;color:var(--muted);margin-right:8px">(저장 후 이동 가능)</span>`)
       : `<span class="drag-handle" style="cursor:grab;color:var(--muted);font-size:16px;margin-right:10px;touch-action:none;user-select:none">⠿</span>`;
+    // 마지막 평가 결과 배지 (저장된 카드만, 미평가면 표시 안 함) — 학습화면 status 색상 CSS 재활용
+    const progress = card.card_id ? (state.cardProgress[card.card_id] || {}) : null;
+    const statusInfo = progress ? statusLabelMap[progress.status || 'none'] : null;
+    const statusBadge = statusInfo
+      ? `<span class="${statusInfo[0]}" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px"><span class="card-status-dot"></span><span class="card-status-label">${statusInfo[1]}</span></span>`
+      : '';
     const removeBtn = (!_cardMoveMode && state.cardInputs.length > 1) ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : '';
-    div.innerHTML = `<div class="card-item-header">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${removeBtn}</div>
+    div.innerHTML = `<div class="card-item-header">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${statusBadge}${removeBtn}</div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
