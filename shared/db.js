@@ -156,6 +156,25 @@ async function saveSession(deckId, know, maybe, dont, completed) {
 // 덱 편집 후 삭제된 카드의 progress 정리 (로컬 + DB)
 // validIds : 편집 후 살아남은 card_id 배열
 // deckId 소속 카드만 대상으로 정리 (다른 덱 progress 건드리지 않음)
+// ════════════════════════════════════════════════
+// 카드별 날짜 히스토리 (card_progress_daily)
+// ════════════════════════════════════════════════
+// 같은 날짜에 여러 번 평가해도 upsert로 그날 최종 답변만 남음 (user_id,card_id,date 유니크)
+async function saveDailyProgress(cardId, status) {
+  const uid = state.user.sub;
+  const today = new Date().toISOString().split('T')[0];
+  await sbUpsert('card_progress_daily', {
+    user_id: uid, card_id: cardId, date: today, status
+  }, 'user_id,card_id,date');
+}
+
+// 특정 카드의 날짜별 히스토리 전체 조회 (최신 날짜순)
+async function getCardHistory(cardId) {
+  const uid = state.user.sub;
+  const rows = await sbSelect('card_progress_daily', `user_id=eq.${uid}&card_id=eq.${cardId}&order=date.desc`);
+  return rows || [];
+}
+
 async function cleanOrphanProgress(deckId, validIds) {
   const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
   if (!deck) return;

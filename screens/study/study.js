@@ -176,6 +176,59 @@ function renderStudyCard() {
   document.getElementById('btn-prev').disabled = (i === 0);
   document.getElementById('btn-next').disabled = (i >= q.length - 1);
 }
+// ════════════════════════════════════════════════
+// 카드 히스토리 모달 (상태 배지 클릭 시)
+// ════════════════════════════════════════════════
+let _historyRecords = [];
+let _historyShownCount = 0;
+const HISTORY_PAGE_SIZE = 10;
+
+async function openCardHistory() {
+  const card = state.studyQueue[state.studyIdx]; if (!card) return;
+  const cardId = card.card_id || card.id;
+  document.getElementById('card-history-modal').style.display = 'flex';
+  document.getElementById('history-list').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0">불러오는 중...</div>';
+  document.getElementById('history-more-btn').style.display = 'none';
+  document.getElementById('history-total-count').textContent = '-';
+  try {
+    _historyRecords = await getCardHistory(cardId);
+  } catch(e) {
+    document.getElementById('history-list').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0">불러오기 실패</div>';
+    return;
+  }
+  const counts = { know: 0, maybe: 0, dont: 0 };
+  _historyRecords.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+  document.getElementById('history-total-count').textContent = `총 ${_historyRecords.length}회 학습`;
+  document.getElementById('history-know-count').textContent  = `✅ ${counts.know}`;
+  document.getElementById('history-maybe-count').textContent = `💭 ${counts.maybe}`;
+  document.getElementById('history-dont-count').textContent  = `😅 ${counts.dont}`;
+  _historyShownCount = 0;
+  document.getElementById('history-list').innerHTML = '';
+  if (_historyRecords.length === 0) {
+    document.getElementById('history-list').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0">아직 학습 기록이 없어요</div>';
+    return;
+  }
+  renderMoreHistory();
+}
+
+// 이미 불러온 _historyRecords 배열에서 다음 페이지만 화면에 추가 (DB 재조회 없음)
+function renderMoreHistory() {
+  const list = document.getElementById('history-list');
+  const labelMap = { know: ['#16a34a', '알았어요'], maybe: ['#d97706', '애매해요'], dont: ['#e53e3e', '몰랐어요'] };
+  const next = _historyRecords.slice(_historyShownCount, _historyShownCount + HISTORY_PAGE_SIZE);
+  next.forEach(r => {
+    const info = labelMap[r.status] || ['#6b6b88', r.status];
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:7px 2px;border-bottom:1px solid var(--border)';
+    row.innerHTML = `<span style="color:var(--muted)">${r.date}</span><span style="color:${info[0]};font-weight:700">${info[1]}</span>`;
+    list.appendChild(row);
+  });
+  _historyShownCount += next.length;
+  document.getElementById('history-more-btn').style.display = (_historyShownCount < _historyRecords.length) ? 'block' : 'none';
+}
+function loadMoreHistory() { renderMoreHistory(); }
+function closeCardHistory() { document.getElementById('card-history-modal').style.display = 'none'; }
+
 function flipCard() {
   // 텍스트 드래그로 선택 중이었으면 뒤집기 무시 (복사 동작과 충돌 방지)
   const sel = window.getSelection();
@@ -218,6 +271,7 @@ function answer(type) {
   const deckId = state._starredMode ? card._deckId : (state.studyDeck.deck_id||state.studyDeck.id);
   getCardProgress(null, cardId).status = type;
   saveCardProgress(cardId, deckId, type, (state.cardProgress[cardId]||{}).starred||false).catch(e => console.error('progress save fail', e));
+  saveDailyProgress(cardId, type).catch(e => console.error('daily progress save fail', e));
   const prev = state.sessionAnswers[cardId];
   if (prev) state.studyResults[prev] = Math.max(0, state.studyResults[prev] - 1);
   state.sessionAnswers[cardId] = type;
