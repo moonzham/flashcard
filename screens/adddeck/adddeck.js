@@ -70,13 +70,34 @@ function renderCardInputs() {
       ? `<span class="${statusInfo[0]}" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px"><span class="card-status-dot"></span><span class="card-status-label">${statusInfo[1]}</span></span>`
       : '';
     const removeBtn = (!_cardMoveMode && state.cardInputs.length > 1) ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : '';
-    div.innerHTML = `<div class="card-item-header">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${statusBadge}${removeBtn}</div>
+    // 카드가 많을 때 드래그 없이 즉시 맨 위/맨 아래로 보내는 점프 버튼
+    const jumpBtns = (!_cardMoveMode && state.cardInputs.length > 2) ? `
+      <button onclick="moveCardToTop(${i})" title="맨 위로" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 6px;cursor:pointer;font-family:inherit;margin-right:4px">⤒</button>
+      <button onclick="moveCardToBottom(${i})" title="맨 아래로" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 6px;cursor:pointer;font-family:inherit;margin-right:4px">⤓</button>` : '';
+    div.innerHTML = `<div class="card-item-header">
+        <div style="display:flex;align-items:center;min-width:0">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px;white-space:nowrap" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${statusBadge}</div>
+        <div style="display:flex;align-items:center;flex-shrink:0">${jumpBtns}${removeBtn}</div>
+      </div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
     container.appendChild(div);
   });
   initCardSortable();
+}
+
+// 카드를 드래그 없이 즉시 맨 위/맨 아래로 이동 (카드 많을 때 편의 기능)
+function moveCardToTop(i) {
+  if (i === 0) return;
+  const [moved] = state.cardInputs.splice(i, 1);
+  state.cardInputs.unshift(moved);
+  renderCardInputs();
+}
+function moveCardToBottom(i) {
+  if (i === state.cardInputs.length - 1) return;
+  const [moved] = state.cardInputs.splice(i, 1);
+  state.cardInputs.push(moved);
+  renderCardInputs();
 }
 
 // 드래그로 카드 순서 바꾸기 (SortableJS) — 인스턴스는 한 번만 생성, 이후엔 disabled만 토글
@@ -88,6 +109,9 @@ function initCardSortable() {
     handle: '.drag-handle',
     animation: 150,
     disabled: _cardMoveMode, // 이동모드(체크박스 선택) 중엔 드래그 비활성화
+    scroll: true,            // 드래그 중 화면 끝에 닿으면 자동 스크롤 (카드 많을 때 편의)
+    scrollSensitivity: 80,
+    scrollSpeed: 12,
     onEnd: (evt) => {
       if (evt.oldIndex === evt.newIndex) return;
       const [moved] = state.cardInputs.splice(evt.oldIndex, 1);
