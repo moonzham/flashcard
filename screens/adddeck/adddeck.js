@@ -279,13 +279,17 @@ async function saveDeck(afterSave) {
         deletedCardIds.forEach(cid => delete state.cardProgress[cid]);
       }
 
-      // 로컬 state 업데이트
+      // 로컬 state 업데이트 — valid 배열의 '지금 순서' 그대로 재구성 (옛 sort_order로 재정렬하지 않음)
       const idx = state.decks.findIndex(d => (d.deck_id||d.id) === state.editingDeckId);
       if (idx !== -1) {
-        const updatedCards = [
-          ...existingCards.map(c => ({ ...c, card_id: c.card_id||c.id, id: c.card_id||c.id })),
-          ...inserted.map(c => ({ ...c, id: c.card_id }))
-        ].sort((a, b) => (a.sort_order||0) - (b.sort_order||0));
+        const insertedBySortOrder = {};
+        inserted.forEach(row => { insertedBySortOrder[row.sort_order] = row; });
+        const updatedCards = valid.map((c, i) => {
+          const isExisting = c.card_id || (c.id && !String(c.id).startsWith('card_'));
+          if (isExisting) return { ...c, card_id: c.card_id||c.id, id: c.card_id||c.id, sort_order: i };
+          const row = insertedBySortOrder[i];
+          return row ? { ...row, id: row.card_id } : { ...c, sort_order: i };
+        });
         state.decks[idx] = { ...state.decks[idx], name, emoji: state.selectedEmoji, cards: updatedCards };
       }
     } else {
