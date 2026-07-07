@@ -48,22 +48,45 @@ function editDeck(id) { showAddDeck(id); }
 
 // ── 카드 이동 모드 ──
 let _cardMoveMode = false;
+// ── 카드 순서 드래그 정렬 (SortableJS) ──
+let _cardSortable = null;
 
 function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
     const memoIcon = card.image_url ? ' 🖼️' : '';
-    const moveCheckbox = !_cardMoveMode ? '' :
-      (card.card_id
-        ? `<input type="checkbox" ${card.checked ? 'checked' : ''} onchange="toggleCardCheck(${i})" style="width:18px;height:18px;margin-right:8px;vertical-align:middle;accent-color:var(--accent)">`
-        : `<span style="font-size:11px;color:var(--muted);margin-right:8px">(저장 후 이동 가능)</span>`);
+    // 이동모드일 땐 체크박스, 평소엔 드래그 핸들 표시 (동시에 안 보이게 서로 배타적)
+    const leadingIcon = _cardMoveMode
+      ? (card.card_id
+          ? `<input type="checkbox" ${card.checked ? 'checked' : ''} onchange="toggleCardCheck(${i})" style="width:18px;height:18px;margin-right:8px;vertical-align:middle;accent-color:var(--accent)">`
+          : `<span style="font-size:11px;color:var(--muted);margin-right:8px">(저장 후 이동 가능)</span>`)
+      : `<span class="drag-handle" style="cursor:grab;color:var(--muted);font-size:16px;margin-right:10px;touch-action:none;user-select:none">⠿</span>`;
     const removeBtn = (!_cardMoveMode && state.cardInputs.length > 1) ? `<button class="remove-btn" onclick="removeCardInput(${i})">✕</button>` : '';
-    div.innerHTML = `<div class="card-item-header">${moveCheckbox}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${removeBtn}</div>
+    div.innerHTML = `<div class="card-item-header">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${removeBtn}</div>
       <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
       <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
       <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
     container.appendChild(div);
+  });
+  initCardSortable();
+}
+
+// 드래그로 카드 순서 바꾸기 (SortableJS) — 인스턴스는 한 번만 생성, 이후엔 disabled만 토글
+function initCardSortable() {
+  if (typeof Sortable === 'undefined') return; // 라이브러리 로드 실패 시에도 앱이 안 깨지도록 방어
+  const container = document.getElementById('card-inputs');
+  if (_cardSortable) { _cardSortable.option('disabled', _cardMoveMode); return; }
+  _cardSortable = Sortable.create(container, {
+    handle: '.drag-handle',
+    animation: 150,
+    disabled: _cardMoveMode, // 이동모드(체크박스 선택) 중엔 드래그 비활성화
+    onEnd: (evt) => {
+      if (evt.oldIndex === evt.newIndex) return;
+      const [moved] = state.cardInputs.splice(evt.oldIndex, 1);
+      state.cardInputs.splice(evt.newIndex, 0, moved);
+      renderCardInputs(); // 순서만 배열에서 바꾸고 다시 그림 (저장은 '저장하기' 누를 때 반영)
+    }
   });
 }
 function addCardInput() { state.cardInputs.push({id: 'card_' + Date.now() + Math.random(), front: '', back: '', hint: ''}); renderCardInputs(); }
