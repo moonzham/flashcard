@@ -177,6 +177,9 @@ function renderStudyCard() {
   document.getElementById('btn-next').disabled = (i >= q.length - 1);
 }
 function flipCard() {
+  // 텍스트 드래그로 선택 중이었으면 뒤집기 무시 (복사 동작과 충돌 방지)
+  const sel = window.getSelection();
+  if (sel && sel.toString().length > 0) return;
   state.studyFlipped = !state.studyFlipped;
   document.getElementById('card-front-face').style.display = state.studyFlipped ? 'none' : 'flex';
   document.getElementById('card-back-face').style.display  = state.studyFlipped ? 'flex' : 'none';
