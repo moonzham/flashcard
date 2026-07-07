@@ -53,7 +53,7 @@ let _cardSortable = null;
 
 function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
-  const statusLabelMap = { know: ['status-know', '✅ 알았어요'], maybe: ['status-maybe', '💭 애매해요'], dont: ['status-dont', '😅 몰랐어요'], none: ['status-none', '❓ 미평가'] };
+  const statusLabelMap = { know: ['status-know', '알았어요'], maybe: ['status-maybe', '애매해요'], dont: ['status-dont', '몰랐어요'], none: ['status-none', '미평가'] };
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
     const memoIcon = card.image_url ? ' 🖼️' : '';
