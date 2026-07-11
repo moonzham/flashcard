@@ -140,7 +140,14 @@ function exitStudy() {
     state._memoOnlyMode = false;
     const returnId = state._returnToAddDeck;
     state._returnToAddDeck = null;
-    if (returnId) { showAddDeck(returnId); return; }
+    if (returnId) {
+      showAddDeck(returnId);
+      // 편집화면 렌더링 완료 후, 카드 번호 클릭 시점의 스크롤 위치로 복원
+      const scrollY = state._addDeckScrollY || 0;
+      state._addDeckScrollY = null;
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      return;
+    }
   }
   showHome();
 }

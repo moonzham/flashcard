@@ -250,6 +250,7 @@ function goToCardMemo(liveCard) {
   state.sessionAnswers = {};
   state._memoOnlyMode = true;       // 메모 전용 모드 (학습 통계/이어하기에 영향 안 주도록 방어)
   state._returnToAddDeck = deckId;  // 뒤로가기 시 편집화면으로 복귀
+  state._addDeckScrollY = window.scrollY; // 복귀 시 스크롤 위치 복원용
   document.getElementById('study-deck-name').textContent = deck.name;
   showScreen('study');
   renderStudyCard();
