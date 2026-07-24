@@ -87,8 +87,7 @@ function setFontSize(el, text) {
   const len = text.length;
   if (len <= 20) el.style.fontSize = '22px';
   else if (len <= 40) el.style.fontSize = '18px';
-  else if (len <= 70) el.style.fontSize = '15px';
-  else el.style.fontSize = '13px';
+  else el.style.fontSize = '16px'; // 긴 텍스트도 가독성 확보 (기존 15px/13px 구간 통합)
 }
 // CSV 한 줄 파싱 (따옴표 안의 쉼표/개행 처리 포함)
 function parseCSVLine(line) {
