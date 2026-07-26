@@ -38,6 +38,24 @@ function updateFilterOrderUI() {
   apply(seq, _currentFilterOrder === 'sequential' ? active : inactive);
   apply(rnd, _currentFilterOrder === 'random' ? active : inactive);
 }
+// ── 출제 방향 (외국어 덱만): 'front'(외국어→뜻) | 'back'(뜻→외국어) | 'random' ──
+let _currentFilterDirection = 'front';
+function setFilterDirection(dir) {
+  _currentFilterDirection = dir;
+  updateFilterDirectionUI();
+}
+function updateFilterDirectionUI() {
+  const active = { borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--accent-subtle)' };
+  const inactive = { borderColor: 'var(--border)', color: 'var(--muted)', background: 'var(--bg)' };
+  const apply = (id, on) => {
+    const el = document.getElementById(id); if (!el) return;
+    const s = on ? active : inactive;
+    el.style.borderColor = s.borderColor; el.style.color = s.color; el.style.background = s.background;
+  };
+  apply('dir-btn-front', _currentFilterDirection === 'front');
+  apply('dir-btn-back', _currentFilterDirection === 'back');
+  apply('dir-btn-random', _currentFilterDirection === 'random');
+}
 function toggleFilterOpt(key) {
   const cb = document.getElementById('filter-' + key);
   cb.checked = !cb.checked;
@@ -65,6 +83,15 @@ function openFilterModal(deckId) {
   _setFilterCheck('dont', counts.dont > 0); _setFilterCheck('none', counts.none > 0);
   _currentFilterOrder = (deck.total_sessions >= 1) ? 'random' : 'sequential';
   updateFilterOrderUI();
+  // 외국어 덱(en/jp)일 때만 출제 방향 섹션 노출
+  const dt = deck.deck_type || 'auto';
+  const dirSection = document.getElementById('filter-direction-section');
+  if (dirSection) {
+    const isForeign = (dt === 'en' || dt === 'jp');
+    dirSection.style.display = isForeign ? 'block' : 'none';
+    _currentFilterDirection = 'front';
+    if (isForeign) updateFilterDirectionUI();
+  }
   updateFilterTotal(deck);
   document.getElementById('filter-modal').style.display = 'flex';
 }
@@ -93,8 +120,18 @@ function startWithFilter() {
   closeFilterModal();
   deck.pending_session = null; saveDeckMeta(deck.deck_id||deck.id, {pending_session: null});
   state.studyDeck = deck;
-  const cards = [...filtered];
-  state.studyQueue = (_currentFilterOrder === 'random') ? cards.sort(() => Math.random() - .5) : cards;
+  let cards = [...filtered];
+  if (_currentFilterOrder === 'random') cards.sort(() => Math.random() - .5);
+  // 출제 방향 반영 (외국어 덱만 해당) — 표시용 앞뒤를 바꾸되 원본 식별/진행상황은 유지
+  const dt = deck.deck_type || 'auto';
+  if (dt === 'en' || dt === 'jp') {
+    cards = cards.map(c => {
+      const flip = _currentFilterDirection === 'back' ||
+                   (_currentFilterDirection === 'random' && Math.random() < 0.5);
+      return flip ? { ...c, front: c.back, back: c.front, _flipped: true } : c;
+    });
+  }
+  state.studyQueue = cards;
   state.studyIdx = 0; state.studyResults = {know:0, maybe:0, dont:0}; state.sessionAnswers = {};
   document.getElementById('study-deck-name').textContent = deck.name;
   showScreen('study'); renderStudyCard();
@@ -204,8 +241,11 @@ async function playCardAudio() {
   const lang = (deck && deck.front_lang) || 'en-US'; // 외국어 덱의 앞면 언어
   const label = document.getElementById('tts-play-label');
   const btn = document.getElementById('tts-play-btn');
+  // 뜻→외국어로 뒤집힌 카드는 표시상 외국어가 back에 있지만,
+  // front_audio_url/back_audio_url 필드는 스왑되지 않으므로 외국어 오디오는 항상 front쪽에 저장/재사용.
+  const foreignText = card._flipped ? card.back : card.front;
   // 일본어 덱: 힌트에 가나(히라가나/가타카나)가 있으면 요미가나로 간주해 그걸로 발음 (한자 훈독/음독 오류 방지)
-  let ttsText = null;
+  let ttsText = foreignText;
   const dt = deck ? (deck.deck_type || 'auto') : 'auto';
   if (dt === 'jp' && /[ぁ-んァ-ヶ]/.test(card.hint || '')) {
     ttsText = card.hint.trim();
@@ -222,6 +262,11 @@ async function playCardAudio() {
     showToast('발음 생성 실패: ' + e.message);
     label.textContent = '발음 듣기'; btn.disabled = false;
   }
+}
+
+// 자동 듣기 모드 진입 (5-B에서 본격 구현 예정, 현재는 진입 뼈대)
+function startAutoListen() {
+  showToast('자동 듣기 모드는 곧 추가됩니다!');
 }
 // ════════════════════════════════════════════════
 // 카드 히스토리 모달 (상태 배지 클릭 시)

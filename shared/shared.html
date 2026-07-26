@@ -67,10 +67,20 @@
         <button type="button" id="order-btn-random" onclick="setFilterOrder('random')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🔀 랜덤</button>
       </div>
     </div>
+    <!-- 출제 방향 (외국어 덱만 표시) -->
+    <div id="filter-direction-section" style="margin-bottom:16px;display:none">
+      <div class="modal-sub" style="margin-bottom:8px">출제 방향</div>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="dir-btn-front" onclick="setFilterDirection('front')" style="flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">외국어→뜻</button>
+        <button type="button" id="dir-btn-back" onclick="setFilterDirection('back')" style="flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">뜻→외국어</button>
+        <button type="button" id="dir-btn-random" onclick="setFilterDirection('random')" style="flex:1;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🔀 랜덤</button>
+      </div>
+    </div>
     <div id="filter-total-info" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px"></div>
-    <div class="modal-btns">
-      <button class="modal-btn modal-btn-secondary" onclick="closeFilterModal()">취소</button>
-      <button class="modal-btn modal-btn-primary" onclick="startWithFilter()">공부 시작 →</button>
+    <button class="modal-btn modal-btn-primary" onclick="startWithFilter()" style="width:100%;margin-bottom:8px">공부 시작 →</button>
+    <div style="display:flex;gap:8px">
+      <button class="modal-btn modal-btn-secondary" onclick="closeFilterModal()" style="flex:1">취소</button>
+      <button class="modal-btn" onclick="startAutoListen()" style="flex:2;border:1px solid var(--accent2);background:var(--accent-subtle);color:var(--accent2);font-weight:700">🎧 자동 듣기</button>
     </div>
   </div>
 </div>
