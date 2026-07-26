@@ -32,11 +32,11 @@ function showAddDeck(deckId) {
     if (!deck.cards || deck.cards.length === 0) {
       showLoading('카드 불러오는 중...');
       loadDeckCards(deckId).then(() => {
-        state.cardInputs = deck.cards.map(c => ({...c, id: c.card_id||c.id}));
+        state.cardInputs = deck.cards.map(c => ({...c, id: c.card_id||c.id, _origFront: c.front, _origBack: c.back, _origHint: c.hint||''}));
         renderCardInputs(); hideLoading();
       }).catch(() => { showToast('카드 로드 실패'); hideLoading(); });
     } else {
-      state.cardInputs = deck.cards.map(c => ({...c, id: c.card_id||c.id}));
+      state.cardInputs = deck.cards.map(c => ({...c, id: c.card_id||c.id, _origFront: c.front, _origBack: c.back, _origHint: c.hint||''}));
     }
   } else {
     document.getElementById('deck-name-input').value = '';
@@ -326,15 +326,21 @@ async function saveDeck(afterSave) {
       const newInputCards  = valid.filter(c => !c.card_id && (!c.id || String(c.id).startsWith('card_')));
 
       // 기존 카드 UPDATE (card_id 유지 → progress 보존)
-      const deckForAudio = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
       await Promise.all(existingCards.map(c => {
         const cardId = c.card_id || c.id;
-        // 텍스트(front/back)가 실제로 바뀐 카드는 기존 mp3 삭제 → 다음 재생 시 재생성
-        const orig = (deckForAudio?.cards || []).find(o => (o.card_id||o.id) === cardId);
-        if (orig && (orig.front !== c.front || orig.back !== c.back) && (orig.front_audio_url || orig.back_audio_url)) {
-          deleteCardAudio(orig).catch(() => {});
+        // 텍스트(front/back/hint)가 실제로 바뀐 카드는 기존 mp3 삭제 → 다음 재생 시 재생성
+        // 스냅샷(_orig*)과 비교 (원본 객체 오염과 무관하게 정확히 판단)
+        const changed = (c._origFront !== undefined) &&
+          (c._origFront !== c.front || c._origBack !== c.back || (c._origHint||'') !== (c.hint||''));
+        if (changed && (c.front_audio_url || c.back_audio_url)) {
+          deleteCardAudio(c).catch(() => {});
           sbUpdate('cards', `card_id=eq.${cardId}`, { front_audio_url: null, back_audio_url: null }).catch(() => {});
           c.front_audio_url = null; c.back_audio_url = null;
+          // state.decks 원본에도 반영
+          for (const dk of state.decks) {
+            const orig = (dk.cards||[]).find(o => (o.card_id||o.id) === cardId);
+            if (orig) { orig.front_audio_url = null; orig.back_audio_url = null; break; }
+          }
         }
         return sbUpdate('cards', `card_id=eq.${cardId}`, { front: c.front, back: c.back, hint: c.hint||null, sort_order: valid.indexOf(c) });
       }));

@@ -204,9 +204,15 @@ async function playCardAudio() {
   const lang = (deck && deck.front_lang) || 'en-US'; // 외국어 덱의 앞면 언어
   const label = document.getElementById('tts-play-label');
   const btn = document.getElementById('tts-play-btn');
+  // 일본어 덱: 힌트에 가나(히라가나/가타카나)가 있으면 요미가나로 간주해 그걸로 발음 (한자 훈독/음독 오류 방지)
+  let ttsText = null;
+  const dt = deck ? (deck.deck_type || 'auto') : 'auto';
+  if (dt === 'jp' && /[ぁ-んァ-ヶ]/.test(card.hint || '')) {
+    ttsText = card.hint.trim();
+  }
   try {
     btn.disabled = true; label.textContent = '준비 중...';
-    const url = await ensureCardAudio(card, 'front', lang);
+    const url = await ensureCardAudio(card, 'front', lang, false, ttsText);
     if (!url) { label.textContent = '발음 듣기'; btn.disabled = false; return; }
     if (_ttsAudio) { _ttsAudio.pause(); }
     _ttsAudio = new Audio(url);

@@ -237,11 +237,12 @@ const TTS_FUNC_URL = `${SUPA_URL}/functions/v1/tts-generate`;
 // 카드의 한 면(front/back)에 대한 mp3를 생성 (이미 있으면 그대로 반환)
 // side: 'front' | 'back', lang: 예 'en-US', 반환: audio_url
 // force=true면 기존 URL 무시하고 강제 재생성 (텍스트 수정 후 등)
-async function ensureCardAudio(card, side, lang, force = false) {
+// ttsText: 실제로 읽을 텍스트를 명시적으로 지정 (예: 일본어 요미가나). 없으면 front/back 사용.
+async function ensureCardAudio(card, side, lang, force = false, ttsText = null) {
   const cardId = card.card_id || card.id;
   const existing = side === 'front' ? card.front_audio_url : card.back_audio_url;
   if (existing && !force) return existing; // 이미 있으면 재사용 (비용 절감)
-  const text = (side === 'front' ? card.front : card.back || '').trim();
+  const text = (ttsText != null ? ttsText : (side === 'front' ? card.front : card.back || '')).trim();
   if (!text) return null;
   const path = `${cardId}_${side}.mp3`;
   const res = await fetch(TTS_FUNC_URL, {
@@ -271,7 +272,6 @@ async function ensureCardAudio(card, side, lang, force = false) {
 // 카드의 오디오 파일(front/back) 삭제 (텍스트 수정/카드 삭제 시)
 // URL이 있으면 Storage에서 지우고, DB 컬럼도 비움
 async function deleteCardAudio(card) {
-  const cardId = card.card_id || card.id;
   const urls = [card.front_audio_url, card.back_audio_url].filter(Boolean);
   await Promise.allSettled(urls.map(url => {
     const marker = `/object/public/${AUDIO_BUCKET}/`;
