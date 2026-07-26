@@ -42,6 +42,7 @@ function openAutoListen(deck, cards) {
   _al.playing = false;
   _al.loop = true;
 
+  alPreloadCover(); // 커버 이미지 base64 프리로드 (Media Session 반복 요청 방지)
   document.getElementById('al-deck-info').textContent = `${deck.name} · ${cards.length}장`;
 
   // 덱 종류에 따라 옵션 UI 구성
@@ -96,18 +97,39 @@ function alRenderCard() {
 // ── Media Session (잠금화면/알림 미디어 컨트롤) ──
 // 제목=외국어(앞면), 아티스트=뜻(뒷면), 커버=고양이 이미지
 let _alMediaReady = false;
+let _alCatDataUrl = null; // 커버 이미지 base64 (한 번만 로드해 재사용)
+
+// 커버 이미지를 base64 data URL로 한 번만 로드
+// (Media Session은 artwork URL을 카드마다 재요청하므로, data URL로 네트워크 반복 요청 차단)
+async function alPreloadCover() {
+  if (_alCatDataUrl) return;
+  try {
+    const url = new URL('screens/autolisten/cat.png', document.baseURI).href;
+    const res = await fetch(url);
+    const blob = await res.blob();
+    _alCatDataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+    // 로드 완료 후 현재 카드 메타데이터 한 번 갱신 (커버 반영)
+    const card = _al.queue[_al.idx];
+    if (card) alUpdateMediaSession(card);
+  } catch (e) { /* 실패해도 커버만 없을 뿐 재생엔 지장 없음 */ }
+}
+
 function alUpdateMediaSession(card) {
   if (!('mediaSession' in navigator)) return;
   try {
-    // 현재 페이지 기준 절대 URL (GitHub Pages 서브경로에서도 정확히 해석되도록)
-    const artUrl = new URL('screens/autolisten/cat.png', document.baseURI).href;
+    const artwork = _alCatDataUrl
+      ? [{ src: _alCatDataUrl, sizes: '512x512', type: 'image/png' }]
+      : [];
     navigator.mediaSession.metadata = new MediaMetadata({
       title: card.front || '',
       artist: card.back || '',
       album: (_al.deck && _al.deck.name) || '암기카드',
-      artwork: [
-        { src: artUrl, sizes: '512x512', type: 'image/png' },
-      ],
+      artwork,
     });
     // 핸들러는 최초 한 번만 등록
     if (!_alMediaReady) {
