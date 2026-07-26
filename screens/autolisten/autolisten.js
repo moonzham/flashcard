@@ -90,6 +90,39 @@ function alRenderCard() {
   document.getElementById('al-front').textContent = card.front;
   document.getElementById('al-back').textContent = card.back;
   document.getElementById('al-hint').textContent = card.hint ? '🔊 ' + card.hint : '';
+  alUpdateMediaSession(card);
+}
+
+// ── Media Session (잠금화면/알림 미디어 컨트롤) ──
+// 제목=외국어(앞면), 아티스트=뜻(뒷면), 커버=고양이 이미지
+let _alMediaReady = false;
+function alUpdateMediaSession(card) {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    // 현재 페이지 기준 절대 URL (GitHub Pages 서브경로에서도 정확히 해석되도록)
+    const artUrl = new URL('screens/autolisten/cat.png', document.baseURI).href;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: card.front || '',
+      artist: card.back || '',
+      album: (_al.deck && _al.deck.name) || '암기카드',
+      artwork: [
+        { src: artUrl, sizes: '512x512', type: 'image/png' },
+      ],
+    });
+    // 핸들러는 최초 한 번만 등록
+    if (!_alMediaReady) {
+      navigator.mediaSession.setActionHandler('play', () => { if (!_al.playing) alPlay(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (_al.playing) alStop(); });
+      navigator.mediaSession.setActionHandler('previoustrack', () => alPrev());
+      navigator.mediaSession.setActionHandler('nexttrack', () => alNext());
+      _alMediaReady = true;
+    }
+  } catch (e) { /* 미지원 환경 무시 */ }
+}
+function alSetMediaPlaybackState(state) {
+  if ('mediaSession' in navigator) {
+    try { navigator.mediaSession.playbackState = state; } catch (e) {}
+  }
 }
 
 // ── 언어/텍스트 결정 ──
@@ -192,6 +225,7 @@ function alPlay() {
   _al.seq++;
   if (!_al.steps || !_al.steps.length) _al.steps = alBuildSteps();
   alUpdatePlayIcon();
+  alSetMediaPlaybackState('playing');
   alPlayStep();
 }
 function alStop(statusText) {
@@ -199,6 +233,7 @@ function alStop(statusText) {
   _al.seq++; // 이전 재생 세대 콜백 전부 무효화
   alKillAudio();
   alUpdatePlayIcon();
+  alSetMediaPlaybackState('paused');
   alSetStatus(statusText || '일시정지');
 }
 function alTogglePlay() {
@@ -282,6 +317,9 @@ function alSetStatus(t) {
 // ── 나가기 ──
 function exitAutoListen() {
   alStop();
+  if ('mediaSession' in navigator) {
+    try { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+  }
   showHome();
 }
 
