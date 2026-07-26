@@ -8,7 +8,7 @@
   </div>
 
   <!-- 현재 카드 표시 -->
-  <div style="border-radius:20px;background:var(--card-bg,#ffffff);border:1px solid var(--card-border,#e0e0e0);padding:30px 20px;text-align:center;margin-bottom:18px">
+  <div style="border-radius:20px;background:var(--card-bg);border:1px solid var(--card-border);padding:30px 20px;text-align:center;margin-bottom:18px">
     <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:12px" id="al-progress">- / -</div>
     <div style="font-weight:800;font-size:24px;color:#111;word-break:keep-all;overflow-wrap:break-word" id="al-front">준비 중...</div>
     <div style="width:60%;height:1px;background:#e5e5e5;margin:14px auto"></div>
@@ -31,7 +31,7 @@
   </div>
   <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:20px" id="al-status-text">재생 중</div>
 
-  <!-- 재생 방식 (외국어 덱: 프리셋 4개) -->
+  <!-- 재생 방식 프리셋 (외국어 덱만) -->
   <div id="al-preset-section" style="display:none">
     <label class="form-label">재생 방식</label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -43,8 +43,38 @@
     <div id="al-preset-desc" style="font-size:12px;color:var(--accent2);text-align:center;margin-bottom:16px"></div>
   </div>
 
-  <!-- 심플 옵션 (일반 덱 / 커스텀은 5-B-2에서 확장) -->
+  <!-- 낭독 순서 / 반복 횟수 (외국어 덱 + 커스텀 선택 시만) -->
+  <div id="al-custom-section" style="display:none">
+    <label class="form-label">낭독 순서</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="al-order-btn" id="al-order-ftob" onclick="alSetOrder('ftob')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">외국어→뜻</button>
+      <button class="al-order-btn" id="al-order-btof" onclick="alSetOrder('btof')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">뜻→외국어</button>
+      <button class="al-order-btn" id="al-order-fonly" onclick="alSetOrder('fonly')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">외국어만</button>
+      <button class="al-order-btn" id="al-order-wrap" onclick="alSetOrder('wrap')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">뜻·외국어·뜻</button>
+    </div>
+    <label class="form-label">외국어 반복 횟수</label>
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="al-rep-btn" id="al-rep-1" onclick="alSetRepeat(1)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">1회</button>
+      <button class="al-rep-btn" id="al-rep-2" onclick="alSetRepeat(2)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">2회</button>
+      <button class="al-rep-btn" id="al-rep-3" onclick="alSetRepeat(3)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">3회</button>
+      <button class="al-rep-btn" id="al-rep-5" onclick="alSetRepeat(5)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">5회</button>
+    </div>
+  </div>
+
+  <!-- 간격 / 속도 / 덱 끝나면 (모든 덱 공통, 프리셋 선택 시에도 조절 가능) -->
   <div id="al-simple-section" style="display:none">
+    <label class="form-label">간격</label>
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="al-gap-btn" id="al-gap-short" onclick="alSetGap('short')" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">짧게</button>
+      <button class="al-gap-btn" id="al-gap-normal" onclick="alSetGap('normal')" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">보통</button>
+      <button class="al-gap-btn" id="al-gap-long" onclick="alSetGap('long')" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">길게</button>
+    </div>
+    <label class="form-label">재생 속도</label>
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="al-rate-btn" id="al-rate-075" onclick="alSetRate(0.75)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">0.75x</button>
+      <button class="al-rate-btn" id="al-rate-100" onclick="alSetRate(1)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">1.0x</button>
+      <button class="al-rate-btn" id="al-rate-125" onclick="alSetRate(1.25)" style="flex:1;padding:9px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">1.25x</button>
+    </div>
     <label class="form-label">덱 끝나면</label>
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <button id="al-loop-on" onclick="alSetLoop(true)" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🔁 반복</button>
