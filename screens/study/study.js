@@ -242,12 +242,12 @@ async function playCardAudio() {
   const label = document.getElementById('tts-play-label');
   const btn = document.getElementById('tts-play-btn');
   // 뜻→외국어로 뒤집힌 카드는 표시상 외국어가 back에 있지만,
-  // front_audio_url/back_audio_url 필드는 스왑되지 않으므로 외국어 오디오는 항상 front쪽에 저장/재사용.
-  const foreignText = card._flipped ? card.back : card.front;
-  // 일본어 덱: 힌트에 가나(히라가나/가타카나)가 있으면 요미가나로 간주해 그걸로 발음 (한자 훈독/음독 오류 방지)
-  let ttsText = foreignText;
+  // front_audio_url/back_audio_url 필드 자체는 스왑되지 않으므로 외국어 오디오는 항상 front쪽에 저장/재사용.
+  let ttsText = card._flipped ? card.back : card.front;
+  // 일본어 덱: 외국어 텍스트에 한자가 있고, 힌트에 가나(히라가나/가타카나)가 있으면
+  // 요미가나로 간주해 힌트로 발음 (한자 훈독/음독 오류 방지)
   const dt = deck ? (deck.deck_type || 'auto') : 'auto';
-  if (dt === 'jp' && /[ぁ-んァ-ヶ]/.test(card.hint || '')) {
+  if (dt === 'jp' && /[\u4e00-\u9faf]/.test(ttsText || '') && /[ぁ-んァ-ヶ]/.test(card.hint || '')) {
     ttsText = card.hint.trim();
   }
   try {
@@ -264,9 +264,18 @@ async function playCardAudio() {
   }
 }
 
-// 자동 듣기 모드 진입 (5-B에서 본격 구현 예정, 현재는 진입 뼈대)
+// 자동 듣기 모드 진입 — 필터 모달의 선택(카드 상태/순서)을 그대로 큐로 구성
 function startAutoListen() {
-  showToast('자동 듣기 모드는 곧 추가됩니다!');
+  const deckId = state.pendingDeckId;
+  const deck = state.decks.find(d => (d.deck_id||d.id) === deckId); if (!deck) return;
+  const selected = getSelectedStatuses();
+  if (!selected.length) { showToast('최소 하나는 선택해주세요'); return; }
+  const filtered = deck.cards.filter(c => { const s = (state.cardProgress[c.card_id||c.id]||{}).status || null; return selected.includes(s); }).map(c => ({...c, id: c.card_id||c.id}));
+  if (!filtered.length) { showToast('해당하는 카드가 없어요'); return; }
+  closeFilterModal();
+  let cards = [...filtered];
+  if (_currentFilterOrder === 'random') cards.sort(() => Math.random() - .5);
+  openAutoListen(deck, cards); // autolisten.js에서 정의
 }
 // ════════════════════════════════════════════════
 // 카드 히스토리 모달 (상태 배지 클릭 시)
@@ -644,7 +653,6 @@ function drawStart(e) {
   _draw.lastX = pos.x; _draw.lastY = pos.y;
   // 획 시작 전 스냅샷 저장 (되돌리기용, 최대 30개)
   const canvas = document.getElementById('draw-canvas');
-  const w = canvas.offsetWidth, h = canvas.offsetHeight;
   _draw.history.push(_draw.ctx.getImageData(0, 0, canvas.width, canvas.height));
   if (_draw.history.length > 30) _draw.history.shift();
 }
@@ -662,7 +670,7 @@ function drawMove(e) {
   _draw.ctx.stroke();
   _draw.lastX = pos.x; _draw.lastY = pos.y;
 }
-function drawEnd(e) { _draw.painting = false; }
+function drawEnd() { _draw.painting = false; }
 
 function setDrawColor(btn) {
   _draw.color = btn.dataset.color; _draw.eraser = false;
@@ -680,7 +688,6 @@ function toggleDrawEraser() {
 }
 function undoDraw() {
   if (!_draw.history.length) return;
-  const canvas = document.getElementById('draw-canvas');
   _draw.ctx.putImageData(_draw.history.pop(), 0, 0);
 }
 function clearDraw() {
