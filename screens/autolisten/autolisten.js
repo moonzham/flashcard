@@ -68,7 +68,19 @@ function alTtsText(card, side) {
 }
 
 // ── 재생 엔진 ──
+// 현재 재생 중인 오디오/타이머를 확실히 정지 (겹침·좀비 콜백 방지)
+function alKillAudio() {
+  if (_al.audio) {
+    _al.audio.pause();
+    _al.audio.onended = null;
+    _al.audio.onerror = null;
+    _al.audio = null;
+  }
+  if (_al.timer) { clearTimeout(_al.timer); _al.timer = null; }
+}
+
 async function alPlayPhase() {
+  alKillAudio(); // 이전 재생 잔재 제거
   const mySeq = _al.seq;
   const card = _al.queue[_al.idx];
   if (!card || !_al.playing) return;
@@ -135,8 +147,7 @@ function alPlay() {
 function alStop(statusText) {
   _al.playing = false;
   _al.seq++; // 이전 재생 세대 콜백 전부 무효화
-  if (_al.audio) { _al.audio.pause(); _al.audio = null; }
-  if (_al.timer) { clearTimeout(_al.timer); _al.timer = null; }
+  alKillAudio();
   alUpdatePlayIcon();
   alSetStatus(statusText || '일시정지');
 }
