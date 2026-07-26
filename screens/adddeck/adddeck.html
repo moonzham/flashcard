@@ -5,6 +5,13 @@
   </div>
   <label class="form-label">덱 이름</label>
   <input class="form-input" id="deck-name-input" placeholder="예: 정보처리기사 1과목" />
+  <label class="form-label">덱 종류</label>
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button type="button" class="deck-type-btn" id="deck-type-auto" onclick="setDeckType('auto')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">📝 일반</button>
+    <button type="button" class="deck-type-btn" id="deck-type-en" onclick="setDeckType('en')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🇺🇸 영어</button>
+    <button type="button" class="deck-type-btn" id="deck-type-jp" onclick="setDeckType('jp')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--bg);color:var(--muted)">🇯🇵 일본어</button>
+  </div>
+  <div id="deck-type-note" style="font-size:11px;color:var(--accent2);margin-bottom:14px;display:none"></div>
   <label class="form-label">이모지</label>
   <div class="emoji-row" id="emoji-row"></div>
   <label class="form-label">CSV / TXT 업로드</label>

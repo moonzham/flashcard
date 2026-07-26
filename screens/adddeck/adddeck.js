@@ -27,6 +27,7 @@ function showAddDeck(deckId) {
     const deck = state.decks.find(d => (d.deck_id||d.id) === deckId);
     document.getElementById('deck-name-input').value = deck.name;
     state.selectedEmoji = deck.emoji;
+    setDeckType(deck.deck_type || 'auto'); // 기존 덱은 값 없으면 auto로 간주
     document.querySelectorAll('.emoji-btn').forEach(b => b.classList.toggle('selected', b.textContent === deck.emoji));
     if (!deck.cards || deck.cards.length === 0) {
       showLoading('카드 불러오는 중...');
@@ -39,12 +40,39 @@ function showAddDeck(deckId) {
     }
   } else {
     document.getElementById('deck-name-input').value = '';
+    setDeckType('auto'); // 신규 덱 기본값
     state.cardInputs = [{id: 'card_' + Date.now(), front: '', back: '', hint: ''}];
   }
   renderCardInputs(); showScreen('adddeck');
 }
 
 function editDeck(id) { showAddDeck(id); }
+
+// 덱 종류 선택 (auto/en/jp) — 버튼 하이라이트 + 안내문구 + 카드 라벨 갱신
+// deck_type에 따라 front_lang/back_lang 자동 결정 (auto는 자동판별이라 lang 비움)
+const DECK_TYPE_LANG = {
+  auto: { front_lang: null,    back_lang: null,    note: '' },
+  en:   { front_lang: 'en-US', back_lang: 'ko-KR', note: '🔊 이 덱은 읽기·자동 듣기에서 영어로 발음됩니다' },
+  jp:   { front_lang: 'ja-JP', back_lang: 'ko-KR', note: '🔊 이 덱은 읽기·자동 듣기에서 일본어로 발음됩니다' },
+};
+function setDeckType(type) {
+  state.selectedDeckType = type;
+  ['auto','en','jp'].forEach(t => {
+    const btn = document.getElementById('deck-type-' + t);
+    if (!btn) return;
+    const on = (t === type);
+    btn.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+    btn.style.color = on ? 'var(--accent)' : 'var(--muted)';
+    btn.style.background = on ? 'var(--accent-subtle)' : 'var(--bg)';
+  });
+  const noteEl = document.getElementById('deck-type-note');
+  const note = (DECK_TYPE_LANG[type] || {}).note || '';
+  noteEl.textContent = note;
+  noteEl.style.display = note ? 'block' : 'none';
+  // 사용자가 직접 버튼을 눌러 종류를 바꿀 때만 카드 라벨 즉시 갱신
+  // (showAddDeck 초기화 중엔 cardInputs 세팅 후 별도로 renderCardInputs 호출됨)
+  if (state.cardInputs && state.cardInputs.length) renderCardInputs();
+}
 
 // ── 카드 이동 모드 ──
 let _cardMoveMode = false;
@@ -54,6 +82,11 @@ let _cardSortable = null;
 function renderCardInputs() {
   const container = document.getElementById('card-inputs'); container.innerHTML = '';
   const statusLabelMap = { know: ['status-know', '알았어요'], maybe: ['status-maybe', '애매해요'], dont: ['status-dont', '몰랐어요'], none: ['status-none', '미평가'] };
+  // 덱 종류에 따라 카드 입력칸 placeholder 라벨 결정
+  const isForeign = (state.selectedDeckType === 'en' || state.selectedDeckType === 'jp');
+  const phFront = isForeign ? '앞면 (외국어)' : '앞면 (문제)';
+  const phBack  = isForeign ? '뒷면 (한국어 뜻)' : '뒷면 (정답)';
+  const phHint  = isForeign ? '힌트 (발음)' : '힌트 (선택)';
   state.cardInputs.forEach((card, i) => {
     const div = document.createElement('div'); div.className = 'card-item';
     const memoIcon = card.image_url ? ' 🖼️' : '';
@@ -78,9 +111,9 @@ function renderCardInputs() {
         <div style="display:flex;align-items:center;min-width:0">${leadingIcon}<span class="card-item-num" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px;white-space:nowrap" onclick="openCardMemo(${i})">카드 ${i+1}${memoIcon}</span>${statusBadge}</div>
         <div style="display:flex;align-items:center;flex-shrink:0">${jumpBtns}${removeBtn}</div>
       </div>
-      <input class="form-input" style="margin-bottom:8px" placeholder="앞면 (문제/설명)" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
-      <input class="form-input" style="margin-bottom:8px" placeholder="뒷면 (정답)" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
-      <input class="form-input" style="margin-bottom:0" placeholder="힌트 (선택)" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
+      <input class="form-input" style="margin-bottom:8px" placeholder="${phFront}" value="${escHtml(card.front)}" oninput="state.cardInputs[${i}].front=this.value">
+      <input class="form-input" style="margin-bottom:8px" placeholder="${phBack}" value="${escHtml(card.back)}" oninput="state.cardInputs[${i}].back=this.value">
+      <input class="form-input" style="margin-bottom:0" placeholder="${phHint}" value="${escHtml(card.hint||'')}" oninput="state.cardInputs[${i}].hint=this.value">`;
     container.appendChild(div);
   });
   initCardSortable();
@@ -280,8 +313,13 @@ async function saveDeck(afterSave) {
   showLoading('저장 중...');
   try {
     const uid = state.user.sub;
+    const dt = state.selectedDeckType || 'auto';
+    const langInfo = DECK_TYPE_LANG[dt] || DECK_TYPE_LANG.auto;
     if (state.editingDeckId) {
-      await sbUpdate('decks', `deck_id=eq.${state.editingDeckId}`, { name, emoji: state.selectedEmoji });
+      await sbUpdate('decks', `deck_id=eq.${state.editingDeckId}`, {
+        name, emoji: state.selectedEmoji,
+        deck_type: dt, front_lang: langInfo.front_lang, back_lang: langInfo.back_lang
+      });
 
       // 기존 카드(card_id 있음) vs 새 카드(card_id 없음) 분리
       const existingCards = valid.filter(c => c.card_id || (c.id && !String(c.id).startsWith('card_')));
@@ -322,10 +360,13 @@ async function saveDeck(afterSave) {
           const row = insertedBySortOrder[i];
           return row ? { ...row, id: row.card_id } : { ...c, sort_order: i };
         });
-        state.decks[idx] = { ...state.decks[idx], name, emoji: state.selectedEmoji, cards: updatedCards };
+        state.decks[idx] = { ...state.decks[idx], name, emoji: state.selectedEmoji, deck_type: dt, front_lang: langInfo.front_lang, back_lang: langInfo.back_lang, cards: updatedCards };
       }
     } else {
-      const [newDeck] = await sbInsert('decks', { user_id: uid, name, emoji: state.selectedEmoji });
+      const [newDeck] = await sbInsert('decks', {
+        user_id: uid, name, emoji: state.selectedEmoji,
+        deck_type: dt, front_lang: langInfo.front_lang, back_lang: langInfo.back_lang
+      });
       const cardRows = valid.map((c, i) => ({ deck_id: newDeck.deck_id, front: c.front, back: c.back, hint: c.hint||null, sort_order: i }));
       const newCards = await sbInsert('cards', cardRows);
       state.decks.push({ ...newDeck, id: newDeck.deck_id, cards: (newCards||[]).map(c => ({...c, id: c.card_id})) });
