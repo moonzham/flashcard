@@ -182,6 +182,40 @@ function renderStudyCard() {
   document.getElementById('memo-area').style.display = 'none';
   document.getElementById('btn-prev').disabled = (i === 0);
   document.getElementById('btn-next').disabled = (i >= q.length - 1);
+  updateTtsButton();
+}
+
+// 발음 듣기 버튼 표시/숨김 — 외국어 덱(en/jp)에서만 노출
+function updateTtsButton() {
+  const btn = document.getElementById('tts-play-btn');
+  if (!btn) return;
+  const deck = state.studyDeck;
+  const dt = deck ? (deck.deck_type || 'auto') : 'auto';
+  const isForeign = (dt === 'en' || dt === 'jp');
+  btn.style.display = isForeign ? 'flex' : 'none';
+  document.getElementById('tts-play-label').textContent = '발음 듣기';
+}
+
+// 발음 듣기 버튼 클릭 — 외국어(front) 쪽을 재생. mp3 없으면 생성 후 재생.
+let _ttsAudio = null;
+async function playCardAudio() {
+  const card = state.studyQueue[state.studyIdx]; if (!card) return;
+  const deck = state.studyDeck;
+  const lang = (deck && deck.front_lang) || 'en-US'; // 외국어 덱의 앞면 언어
+  const label = document.getElementById('tts-play-label');
+  const btn = document.getElementById('tts-play-btn');
+  try {
+    btn.disabled = true; label.textContent = '준비 중...';
+    const url = await ensureCardAudio(card, 'front', lang);
+    if (!url) { label.textContent = '발음 듣기'; btn.disabled = false; return; }
+    if (_ttsAudio) { _ttsAudio.pause(); }
+    _ttsAudio = new Audio(url);
+    _ttsAudio.play();
+    label.textContent = '발음 듣기'; btn.disabled = false;
+  } catch (e) {
+    showToast('발음 생성 실패: ' + e.message);
+    label.textContent = '발음 듣기'; btn.disabled = false;
+  }
 }
 // ════════════════════════════════════════════════
 // 카드 히스토리 모달 (상태 배지 클릭 시)

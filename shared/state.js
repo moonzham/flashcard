@@ -44,6 +44,7 @@ let state = {
 
   // ── 덱 추가/편집 화면 ──
   selectedEmoji: '📚',
+  selectedDeckType: 'auto',
   cardInputs: [],       // 카드 직접입력 목록 (렌더링용 임시 배열)
 };
 

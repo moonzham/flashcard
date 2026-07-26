@@ -51,7 +51,7 @@ function editDeck(id) { showAddDeck(id); }
 // 덱 종류 선택 (auto/en/jp) — 버튼 하이라이트 + 안내문구 + 카드 라벨 갱신
 // deck_type에 따라 front_lang/back_lang 자동 결정 (auto는 자동판별이라 lang 비움)
 const DECK_TYPE_LANG = {
-  auto: { front_lang: null,    back_lang: null,    note: '' },
+  auto: { front_lang: 'ko-KR', back_lang: 'ko-KR', note: '' },
   en:   { front_lang: 'en-US', back_lang: 'ko-KR', note: '🔊 이 덱은 읽기·자동 듣기에서 영어로 발음됩니다' },
   jp:   { front_lang: 'ja-JP', back_lang: 'ko-KR', note: '🔊 이 덱은 읽기·자동 듣기에서 일본어로 발음됩니다' },
 };
@@ -326,8 +326,16 @@ async function saveDeck(afterSave) {
       const newInputCards  = valid.filter(c => !c.card_id && (!c.id || String(c.id).startsWith('card_')));
 
       // 기존 카드 UPDATE (card_id 유지 → progress 보존)
+      const deckForAudio = state.decks.find(d => (d.deck_id||d.id) === state.editingDeckId);
       await Promise.all(existingCards.map(c => {
         const cardId = c.card_id || c.id;
+        // 텍스트(front/back)가 실제로 바뀐 카드는 기존 mp3 삭제 → 다음 재생 시 재생성
+        const orig = (deckForAudio?.cards || []).find(o => (o.card_id||o.id) === cardId);
+        if (orig && (orig.front !== c.front || orig.back !== c.back) && (orig.front_audio_url || orig.back_audio_url)) {
+          deleteCardAudio(orig).catch(() => {});
+          sbUpdate('cards', `card_id=eq.${cardId}`, { front_audio_url: null, back_audio_url: null }).catch(() => {});
+          c.front_audio_url = null; c.back_audio_url = null;
+        }
         return sbUpdate('cards', `card_id=eq.${cardId}`, { front: c.front, back: c.back, hint: c.hint||null, sort_order: valid.indexOf(c) });
       }));
 
@@ -344,6 +352,9 @@ async function saveDeck(afterSave) {
       const keptCardIds = existingCards.map(c => c.card_id||c.id);
       const deletedCardIds = prevCardIds.filter(id => !keptCardIds.includes(id));
       if (deletedCardIds.length > 0) {
+        // 삭제되는 카드의 오디오 파일도 Storage에서 정리
+        (deck?.cards || []).filter(c => deletedCardIds.includes(c.card_id||c.id))
+          .forEach(c => { if (c.front_audio_url || c.back_audio_url) deleteCardAudio(c).catch(() => {}); });
         await sbDelete('cards', `card_id=in.(${deletedCardIds.join(',')})`);
         await sbDelete('card_progress', `card_id=in.(${deletedCardIds.join(',')})`).catch(() => {});
         deletedCardIds.forEach(cid => delete state.cardProgress[cid]);

@@ -227,3 +227,55 @@ async function sbDeleteImage(url) {
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
   });
 }
+
+// ════════════════════════════════════════════════
+// TTS 오디오 (Edge Function으로 mp3 생성 + Storage 관리)
+// ════════════════════════════════════════════════
+const AUDIO_BUCKET = 'flashcard-audio';
+const TTS_FUNC_URL = `${SUPA_URL}/functions/v1/tts-generate`;
+
+// 카드의 한 면(front/back)에 대한 mp3를 생성 (이미 있으면 그대로 반환)
+// side: 'front' | 'back', lang: 예 'en-US', 반환: audio_url
+// force=true면 기존 URL 무시하고 강제 재생성 (텍스트 수정 후 등)
+async function ensureCardAudio(card, side, lang, force = false) {
+  const cardId = card.card_id || card.id;
+  const existing = side === 'front' ? card.front_audio_url : card.back_audio_url;
+  if (existing && !force) return existing; // 이미 있으면 재사용 (비용 절감)
+  const text = (side === 'front' ? card.front : card.back || '').trim();
+  if (!text) return null;
+  const path = `${cardId}_${side}.mp3`;
+  const res = await fetch(TTS_FUNC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPA_KEY}` },
+    body: JSON.stringify({ text, lang: lang || 'ko-KR', path }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `TTS 생성 실패: HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const url = data.audio_url;
+  // DB의 cards 테이블에 URL 저장
+  const col = side === 'front' ? 'front_audio_url' : 'back_audio_url';
+  await sbUpdate('cards', `card_id=eq.${cardId}`, { [col]: url }).catch(() => {});
+  // 로컬 카드 객체에도 반영
+  if (side === 'front') card.front_audio_url = url; else card.back_audio_url = url;
+  return url;
+}
+
+// 카드의 오디오 파일(front/back) 삭제 (텍스트 수정/카드 삭제 시)
+// URL이 있으면 Storage에서 지우고, DB 컬럼도 비움
+async function deleteCardAudio(card) {
+  const cardId = card.card_id || card.id;
+  const urls = [card.front_audio_url, card.back_audio_url].filter(Boolean);
+  await Promise.allSettled(urls.map(url => {
+    const marker = `/object/public/${AUDIO_BUCKET}/`;
+    const idx = url.indexOf(marker);
+    if (idx === -1) return Promise.resolve();
+    const path = url.slice(idx + marker.length);
+    return fetch(`${SUPA_URL}/storage/v1/object/${AUDIO_BUCKET}/${path}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` },
+    });
+  }));
+}

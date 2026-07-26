@@ -93,6 +93,11 @@
     </div>
   </div>
 
+  <button class="tts-play-btn" id="tts-play-btn" onclick="playCardAudio()" style="display:none;width:100%;padding:11px;background:var(--accent-subtle);border:1px solid var(--accent2);border-radius:12px;color:var(--accent2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;align-items:center;justify-content:center;gap:8px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    <span id="tts-play-label">발음 듣기</span>
+  </button>
+
   <div class="nav-btns">
     <button class="nav-btn" id="btn-prev" onclick="prevCard()">← 이전</button>
     <button class="nav-btn" id="btn-next" onclick="nextCard()">다음 →</button>
