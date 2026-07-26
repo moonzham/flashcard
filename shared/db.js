@@ -258,8 +258,13 @@ async function ensureCardAudio(card, side, lang, force = false) {
   // DB의 cards 테이블에 URL 저장
   const col = side === 'front' ? 'front_audio_url' : 'back_audio_url';
   await sbUpdate('cards', `card_id=eq.${cardId}`, { [col]: url }).catch(() => {});
-  // 로컬 카드 객체에도 반영
+  // 전달받은 카드 객체에 반영
   if (side === 'front') card.front_audio_url = url; else card.back_audio_url = url;
+  // state.decks의 원본 카드에도 반영 (화면 재진입 시 studyQueue 재생성돼도 URL 유지)
+  for (const deck of state.decks) {
+    const orig = (deck.cards || []).find(c => (c.card_id||c.id) === cardId);
+    if (orig) { if (side === 'front') orig.front_audio_url = url; else orig.back_audio_url = url; break; }
+  }
   return url;
 }
 
