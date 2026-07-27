@@ -24,6 +24,8 @@ const _al = {
   gap: 'normal',    // 'short' | 'normal' | 'long'
   rate: 1,          // 재생 속도
   seq: 0,           // 재생 세대 (정지 후 이전 콜백 무시용)
+  filterStatuses: null, // 진입 시 선택한 상태 필터 (다음 턴 재필터링 기준)
+  turnEvals: {},    // 이번 턴에 평가한 카드 { cardId: status }
 };
 
 // 프리셋 정의 (외국어 덱 전용)
@@ -34,9 +36,11 @@ const AL_PRESETS = {
 };
 
 // ── 진입 (study.js의 startAutoListen에서 호출) ──
-function openAutoListen(deck, cards) {
+function openAutoListen(deck, cards, filterStatuses) {
   _al.deck = deck;
   _al.queue = cards;
+  _al.filterStatuses = filterStatuses || null; // 다음 턴 재필터링 기준 (없으면 재필터링 안 함)
+  _al.turnEvals = {}; // 이번 턴에 평가한 카드 { cardId: status }
   _al.idx = 0;
   _al.stepIdx = 0;
   _al.playing = false;
@@ -91,7 +95,22 @@ function alRenderCard() {
   document.getElementById('al-front').textContent = card.front;
   document.getElementById('al-back').textContent = card.back;
   document.getElementById('al-hint').textContent = card.hint ? '🔊 ' + card.hint : '';
+  alRenderEvalBadge(card);
   alUpdateMediaSession(card);
+}
+
+// 이번 턴에 평가한 카드면 뱃지 표시 (다음 턴 반영 예고)
+function alRenderEvalBadge(card) {
+  const badge = document.getElementById('al-eval-badge'); if (!badge) return;
+  const cardId = card.card_id || card.id;
+  const ev = _al.turnEvals[cardId];
+  if (!ev) { badge.style.display = 'none'; return; }
+  const info = { know: ['#16a34a', '✅ 알았어요'], maybe: ['#d97706', '💭 애매해요'], dont: ['#e53e3e', '😅 몰랐어요'] }[ev];
+  // 이번 턴 평가 결과가 필터에서 벗어나면 "다음 턴 제외 예정" 안내
+  const willDrop = _al.filterStatuses && !_al.filterStatuses.includes(ev);
+  badge.style.color = info[0];
+  badge.textContent = info[1] + (willDrop ? ' · 다음 턴부터 제외' : '');
+  badge.style.display = 'block';
 }
 
 // ── Media Session (잠금화면/알림 미디어 컨트롤) ──
@@ -215,19 +234,46 @@ function alAfterStep() {
     // 카드 완료 → 다음 카드로
     if (_al.idx < _al.queue.length - 1) {
       _al.idx++;
-    } else if (_al.loop) {
-      _al.idx = 0;
     } else {
-      alStop('완료! 처음부터 들으려면 재생을 눌러주세요');
-      _al.idx = 0; _al.stepIdx = 0; _al.steps = alBuildSteps();
-      alRenderCard();
-      return;
+      // ── 덱 한 바퀴 완료 = 턴 경계 → 이번 턴 평가를 반영해 큐 재구성 ──
+      if (!alStartNextTurn()) return; // 큐가 비면 여기서 정지 처리됨
     }
     _al.stepIdx = 0;
     _al.steps = alBuildSteps();
     alRenderCard();
     alPlayStep();
   }, AL_GAP_MS[_al.gap] || 800);
+}
+
+// 다음 턴 시작: 필터 기준으로 큐 재구성 (이번 턴에 상태가 필터 밖으로 바뀐 카드 제외)
+// 반환: true=계속 재생, false=정지(더 들을 카드 없거나 반복 꺼짐)
+function alStartNextTurn() {
+  // 재필터링 (filterStatuses가 있을 때만). 없으면 기존 큐 그대로 반복.
+  if (_al.filterStatuses) {
+    _al.queue = _al.queue.filter(c => {
+      const s = (state.cardProgress[c.card_id||c.id] || {}).status || null;
+      return _al.filterStatuses.includes(s);
+    });
+  }
+  _al.turnEvals = {}; // 새 턴이니 이번 턴 평가 기록 초기화
+  if (_al.queue.length === 0) {
+    alStop('🎉 모두 완료! 남은 카드가 없어요');
+    _al.idx = 0;
+    document.getElementById('al-front').textContent = '완료!';
+    document.getElementById('al-back').textContent = '남은 카드를 모두 학습했어요';
+    document.getElementById('al-hint').textContent = '';
+    document.getElementById('al-progress').textContent = '- / -';
+    const badge = document.getElementById('al-eval-badge'); if (badge) badge.style.display = 'none';
+    return false;
+  }
+  if (!_al.loop) {
+    alStop('완료! 처음부터 들으려면 재생을 눌러주세요');
+    _al.idx = 0; _al.stepIdx = 0; _al.steps = alBuildSteps();
+    alRenderCard();
+    return false;
+  }
+  _al.idx = 0; // 처음부터 다시
+  return true;
 }
 
 // 다음 카드의 front/back mp3를 백그라운드로 미리 생성 (끊김 방지)
@@ -280,6 +326,21 @@ function alApplyOptionChange() {
   _al.stepIdx = 0;
   _al.steps = alBuildSteps();
   if (_al.playing) { _al.seq++; alPlayStep(); }
+}
+
+// ── 평가 (듣다가 평가 → 이번 턴엔 유지, 다음 턴에 반영) ──
+function alEvaluate(status) {
+  const card = _al.queue[_al.idx]; if (!card) return;
+  const cardId = card.card_id || card.id;
+  // 상태 즉시 저장 (통계/히스토리 + 캐시). 큐는 이번 턴 동안 그대로 유지.
+  const starred = (state.cardProgress[cardId] || {}).starred || false;
+  state.cardProgress[cardId] = { ...(state.cardProgress[cardId]||{}), status, starred };
+  saveCardProgress(cardId, _al.deck.deck_id || _al.deck.id, status, starred).catch(() => {});
+  saveDailyProgress(cardId, status).catch(() => {});
+  _al.turnEvals[cardId] = status;
+  alRenderEvalBadge(card);
+  const labels = { know: '알았어요', maybe: '애매해요', dont: '몰랐어요' };
+  showToast(`${labels[status]}로 평가했어요`);
 }
 
 // ── 옵션 UI ──

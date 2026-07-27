@@ -275,7 +275,7 @@ function startAutoListen() {
   closeFilterModal();
   let cards = [...filtered];
   if (_currentFilterOrder === 'random') cards.sort(() => Math.random() - .5);
-  openAutoListen(deck, cards); // autolisten.js에서 정의
+  openAutoListen(deck, cards, selected); // autolisten.js에서 정의 (selected: 재필터링 기준)
 }
 // ════════════════════════════════════════════════
 // 카드 히스토리 모달 (상태 배지 클릭 시)

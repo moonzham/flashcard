@@ -10,10 +10,18 @@
   <!-- 현재 카드 표시 -->
   <div style="border-radius:20px;background:var(--card-bg);border:1px solid var(--card-border);padding:30px 20px;text-align:center;margin-bottom:18px">
     <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:12px" id="al-progress">- / -</div>
+    <div id="al-eval-badge" style="display:none;font-size:12px;font-weight:700;margin-bottom:10px"></div>
     <div style="font-weight:800;font-size:24px;color:#111;word-break:keep-all;overflow-wrap:break-word" id="al-front">준비 중...</div>
     <div style="width:60%;height:1px;background:#e5e5e5;margin:14px auto"></div>
     <div style="font-weight:700;font-size:17px;color:#888;word-break:keep-all;overflow-wrap:break-word" id="al-back"></div>
     <div style="font-size:12px;color:#aaa;margin-top:10px" id="al-hint"></div>
+  </div>
+
+  <!-- 평가 버튼 (듣다가 평가 → 다음 턴에 반영) -->
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="al-eval-dont" onclick="alEvaluate('dont')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid #e53e3e44;background:#e53e3e14;color:#e53e3e">😅 몰랐어요</button>
+    <button id="al-eval-maybe" onclick="alEvaluate('maybe')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid #d9770644;background:#d9770614;color:#d97706">💭 애매해요</button>
+    <button id="al-eval-know" onclick="alEvaluate('know')" style="flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid #16a34a44;background:#16a34a14;color:#16a34a">✅ 알았어요</button>
   </div>
 
   <!-- 재생 컨트롤 (SVG) -->
